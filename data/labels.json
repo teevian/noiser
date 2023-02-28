@@ -1,0 +1,7 @@
+{
+    "MainWindow" : {
+        "title" : "NOISER - analysing noise",
+        "dimen" : [800, 600],
+        "dmien_min" : [600, 400]
+    }
+}
