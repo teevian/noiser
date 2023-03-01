@@ -12,7 +12,7 @@ void loop() {
 
   if(pin_input >= 0 && pin_input <=5) {
     float value = analogRead(pin_input);
-    Serial.println(value * 5 / 1023); 
+    Serial.println(value);  
   }
 
   delay(1000);

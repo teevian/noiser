@@ -1,34 +1,34 @@
-import serial, time
+import serial, time, os
 
-##  IAD protocol {Id Analog Data}
-# We've created a protocol for communications between Raspberry and Arduino
-# 
+PATH_SERIAL_ARDUINO = '/dev/ttyACM0'
+names = ['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2']
 
-# securely checks for serial connection with arduino
-def checkConnection(PATH_SERIAL_ARDUINO = '/dev/ttyACM0'):
+# securely opens serial connection with arduino
+# TODO improve this
+def openConnection(PATH_SERIAL_ARDUINO = '/dev/ttyACM0'):
     try:
-        serial_con = serial.Serial(PATH_SERIAL_ARDUINO, 9600, timeout=1)
+        serial_connection = serial.Serial(PATH_SERIAL_ARDUINO, 9600, timeout=1)
     except serial.SerialException:
-        raise Exception('No Arduino is connected to the serial port!')
+        raise Exception('Arduino not connected')
     else:
         time.sleep(1)
 
-        if serial_con.isOpen():
-            print("Arduino found!")
-            return serial_con
+        if serial_connection.isOpen():
+            print("Connection Established")
+            return serial_connection
         else:
             print("Arduino not found!")
 
-# securely opens serial connection with arduino
-def openConnection(PATH_SERIAL_ARDUINO = '/dev/ttyACM0'):
-    try:
-        serial_con = checkConnection()
-    except Exception as err:
-        print('Connection failed: ' + str(err))
+def requestLiveDataFromPin(pin = 0):
+    serial_connection = openConnection()
+    serial_connection.reset_input_buffer()
+    serial_connection.write(pin if 0 <= pin <= 5 else 0)
+    
+    while True:
+        if serial_connection.in_waiting > 0:   # checks if any data is available
+            voltage = serial_connection.readline().decode('utf-8').rstrip()
+            print(time.strftime("%H:%M:%S", time.localtime()) + " : " + voltage)
 
-        return serial_con
-    else:
-        print('Connection established')
 
 def sendData():
     serial_con = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
@@ -37,20 +37,8 @@ def sendData():
     while True:
         serial_con.write('{ID, ANALOG, DATA}'.econde('utf-8'))
         line = serial_con.readline().decode('utf-8').rstrip()
-        print(line)
+
         time.sleep(1)
-
-def requestLiveDataFromPin(pin):
-    serial_con = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-    serial_con.reset_input_buffer()
-
-    serial_con.write(str(0).encode('utf-8'))
-    
-    while True:
-        if serial_con.in_waiting > 0:   # checks if any data is available
-            line = serial_con.readline().decode('utf-8').rstrip()
-            print(line)
-
 
 def getData():
     serial_con = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
