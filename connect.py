@@ -22,6 +22,7 @@ def openConnection(PATH_SERIAL_ARDUINO = '/dev/ttyACM0'):
 def requestLiveDataFromPin(pin = 0):
     serial_connection = openConnection()
     serial_connection.reset_input_buffer()
+
     serial_connection.write(pin if 0 <= pin <= 5 else 0)
     
     while True:

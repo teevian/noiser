@@ -1,5 +1,7 @@
 ## CODE
 
+import pyqtgraph as pg
+
 from PyQt5.QtCore import (
         QSize, Qt, pyqtSlot
         )
@@ -8,9 +10,6 @@ from PyQt5.QtWidgets import (
         QLabel, QLineEdit, QVBoxLayout, QWidget,
         QHBoxLayout, QRadioButton, 
         )
-
-# QApplication is the application handler
-# Qwidget is a basic empty GUI widget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -28,7 +27,7 @@ class MainWindow(QMainWindow):
         self.input.textChanged.connect(self.label.setText)
 
         # plot button
-        self.bt_plot = QPushButton('plot')
+        self.bt_plot = QPushButton('RECORD')
         self.bt_plot.setCheckable(True)
         self.bt_plot.clicked.connect(self.bt_plot_clicked)
 
@@ -46,7 +45,12 @@ class MainWindow(QMainWindow):
             bt_radio_pin.setChecked(False)
             layout_select_pin.addWidget(bt_radio_pin)
         
+        plot = pg.PlotWidget()
+        plot.plot([1, 2, 3, 4], [3, 4, 2, 4])
+
         layout.addLayout(layout_select_pin)
+        layout.addWidget(plot)
+        
         layout.addWidget(self.input)
         layout.addWidget(self.label)
         layout.addWidget(self.bt_liveRead)
