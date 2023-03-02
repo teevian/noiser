@@ -1,4 +1,4 @@
-## CODE
+#!/usr/bin/env python
 
 import pyqtgraph as pg
 
@@ -8,12 +8,14 @@ from PyQt5.QtCore import (
 from PyQt5.QtWidgets import (
         QApplication, QMainWindow, QPushButton,
         QLabel, QLineEdit, QVBoxLayout, QWidget,
-        QHBoxLayout, QRadioButton, 
+        QHBoxLayout, QRadioButton, QGroupBox,
+        QComboBox, QDialog, QTabWidget, QSizePolicy,
+        QTextEdit, QTableWidget
         )
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
+class NoiserWindow(QDialog):
+    def __init__(self, parent = None):
+        super(NoiserWindow, self).__init__(parent)
         self.initUI()
 
     def initUI(self):
@@ -21,64 +23,90 @@ class MainWindow(QMainWindow):
         self.setFixedSize(QSize(800, 600))
         self.setMinimumSize(QSize(600, 400))
 
-        self.label = QLabel()
+        self.createGroupPinChoice()
+        self.createTabDataAnalyzer()
+
+        ports = ['port 1', 'port 2']
+        comboBoxPorts = QComboBox()
+        comboBoxPorts.addItems(ports)
+
+        # top widgets
+        layoutTop = QHBoxLayout()
+        layoutTop.addWidget(QLabel("Ports:"))
+        layoutTop.addWidget(comboBoxPorts)
+        layoutTop.addWidget(self.groupPinChoice)
         
-        self.input = QLineEdit()
-        self.input.textChanged.connect(self.label.setText)
-
-        # plot button
-        self.bt_plot = QPushButton('RECORD')
-        self.bt_plot.setCheckable(True)
-        self.bt_plot.clicked.connect(self.bt_plot_clicked)
-
-        # live read (reads arduino while pressed)
-        self.bt_liveRead = QPushButton('live read')
-        self.bt_liveRead.setCheckable(True)
-        self.bt_liveRead.pressed.connect(self.bt_liveRead_pressed)
-        self.bt_liveRead.released.connect(self.bt_liveRead_released)
-
-        layout = QVBoxLayout()
-        layout_select_pin = QHBoxLayout()
-
-        for i in range(6):
-            bt_radio_pin = QRadioButton(str(i), self)
-            bt_radio_pin.setChecked(False)
-            layout_select_pin.addWidget(bt_radio_pin)
+        # data analysis widgets (middle)
+        layoutMiddle = QHBoxLayout()
+        layoutMiddle.addWidget(self.bottomLeftTabWidget)
         
+        # general info about connection
+        layoutBottom = QHBoxLayout()
+        labelArduinoDescription = QLabel('Arduino Connected')
+        layoutBottom.addWidget(labelArduinoDescription)
+        
+        # layouts generator
+        layoutMain = QVBoxLayout()
+
+        # positioning
+        layoutMain.addLayout(layoutTop)
+        layoutMain.addStretch(1)
+        layoutMain.addLayout(layoutMiddle)
+        layoutMain.addStretch(3)
+        layoutMain.addLayout(layoutBottom)
+
+        self.setLayout(layoutMain)
+
+    def createGroupPinChoice(self):
+        layout = QHBoxLayout()
+        self.groupPinChoice = QGroupBox('Analog PIN')
+
+        buttons = [QRadioButton('A{}'.format(i)) for i in range(6)]
+        buttons[0].setChecked(True)
+
+        for pin in buttons:
+            layout.addWidget(pin)
+
+        #for pin in ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']:
+        #    radio_pin = QRadioButton(pin)
+        #    layout.addWidget(radio_pin)
+
+        layout.addStretch(1)
+        self.groupPinChoice.setLayout(layout)
+
+    def createTabDataAnalyzer(self):
+        self.bottomLeftTabWidget = QTabWidget()
+        self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Policy.Preferred,
+                QSizePolicy.Policy.Ignored)
+        
+        # graph
+        tab2 = QWidget()
+        textEdit = QTextEdit()
+
         plot = pg.PlotWidget()
         plot.plot([1, 2, 3, 4], [3, 4, 2, 4])
 
-        layout.addLayout(layout_select_pin)
-        layout.addWidget(plot)
-        
-        layout.addWidget(self.input)
-        layout.addWidget(self.label)
-        layout.addWidget(self.bt_liveRead)
-        layout.addWidget(self.bt_plot)
+        #layout.addWidget(plot)
 
-        container = QWidget()
-        container.setLayout(layout)
+        tab2hbox = QHBoxLayout()
+        tab2hbox.setContentsMargins(5, 5, 5, 5)
+        tab2hbox.addWidget(plot)
+        tab2.setLayout(tab2hbox)
 
-        self.setCentralWidget(container)
+        # table
+        tab1 = QWidget()
+        tableWidget = QTableWidget(10, 10)
 
-    @pyqtSlot()
-    def bt_plot_clicked(self):
-        print(self.bt_plot.isChecked())
-        self.bt_plot.setEnabled(False)
+        tab1hbox = QHBoxLayout()
+        tab1hbox.setContentsMargins(5, 5, 5, 5)
+        tab1hbox.addWidget(tableWidget)
 
-    @pyqtSlot()
-    def bt_liveRead_pressed(self):
-        title = 'Noiser GUI'
-        self.setWindowTitle(title + ' (LIVE reading...)')
+        tab1.setLayout(tab1hbox)
 
-        print("reading...")
 
-    @pyqtSlot()
-    def bt_liveRead_released(self):
-        title = 'Noiser GUI'
-        self.setWindowTitle(title)
+        self.bottomLeftTabWidget.addTab(tab1, "&Table")
+        self.bottomLeftTabWidget.addTab(tab2, "Text &Edit")
 
-        print("stopped reading!")
 
 def main():
     import sys
@@ -86,8 +114,8 @@ def main():
 
     # application singleton instance
     app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
+    noiserStation = NoiserWindow()
+    noiserStation.show()
 
     sys.exit(app.exec_())
 
