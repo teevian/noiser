@@ -10,23 +10,28 @@ from PyQt5.QtWidgets import (
         QLabel, QLineEdit, QVBoxLayout, QWidget,
         QHBoxLayout, QRadioButton, QGroupBox,
         QComboBox, QDialog, QTabWidget, QSizePolicy,
-        QTextEdit, QTableWidget
+        QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox
         )
 
+"""
+Class for the main window
+"""
 class NoiserWindow(QDialog):
     def __init__(self, parent = None):
         super(NoiserWindow, self).__init__(parent)
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle('Noisr - wave analyser')
+        self.setWindowTitle('NOISER - wave analyser')
         self.setFixedSize(QSize(800, 600))
         self.setMinimumSize(QSize(600, 400))
 
-        self.createGroupPinChoice()
-        self.createTabDataAnalyzer()
+        self.createGroupAnalogPinChoice()
+        self.createPlotAnalyzer()
+        self.createTableDataAnalyzer()
+        self.createGroupControllers()
 
-        ports = ['port 1', 'port 2']
+        ports = ['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2']
         comboBoxPorts = QComboBox()
         comboBoxPorts.addItems(ports)
 
@@ -34,12 +39,22 @@ class NoiserWindow(QDialog):
         layoutTop = QHBoxLayout()
         layoutTop.addWidget(QLabel("Ports:"))
         layoutTop.addWidget(comboBoxPorts)
+        
+        layoutTop.addWidget(QLabel("Step:"))
+        layoutTop.addWidget(QSpinBox())
+
         layoutTop.addWidget(self.groupPinChoice)
         
         # data analysis widgets (middle)
         layoutMiddle = QHBoxLayout()
-        layoutMiddle.addWidget(self.bottomLeftTabWidget)
+        layoutMiddle.addWidget(self.tabPlotter)
+        layoutMiddle.addWidget(self.table)
         
+        # data controllers
+        layoutGround = QHBoxLayout()
+        layoutGround.addWidget(QLCDNumber())
+        layoutGround.addWidget(self.groupControllers)
+
         # general info about connection
         layoutBottom = QHBoxLayout()
         labelArduinoDescription = QLabel('Arduino Connected')
@@ -52,12 +67,41 @@ class NoiserWindow(QDialog):
         layoutMain.addLayout(layoutTop)
         layoutMain.addStretch(1)
         layoutMain.addLayout(layoutMiddle)
-        layoutMain.addStretch(3)
+        layoutMain.addStretch(4)
+        layoutMain.addLayout(layoutGround)
+        layoutMain.addStretch(1)
         layoutMain.addLayout(layoutBottom)
 
         self.setLayout(layoutMain)
 
-    def createGroupPinChoice(self):
+    @pyqtSlot()
+    def btPlayClicked(self):
+        title = 'NOISER - wave analyser'
+        self.setWindowTitle(title + ' (LIVE reading...)')
+
+        self.btPlayPause.setText('PAUSE')
+
+
+    def bt_plot_clicked(self):
+        print(self.bt_plot.isChecked())
+        self.bt_plot.setEnabled(False)
+
+    @pyqtSlot()
+    def bt_liveRead_pressed(self):
+        title = 'Noiser GUI'
+        self.setWindowTitle(title + ' (LIVE reading...)')
+
+        print("reading...")
+
+    @pyqtSlot()
+    def bt_liveRead_released(self):
+        title = 'Noiser GUI'
+        self.setWindowTitle(title)
+
+        print("stopped reading!")
+
+
+    def createGroupAnalogPinChoice(self):
         layout = QHBoxLayout()
         self.groupPinChoice = QGroupBox('Analog PIN')
 
@@ -67,46 +111,63 @@ class NoiserWindow(QDialog):
         for pin in buttons:
             layout.addWidget(pin)
 
-        #for pin in ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']:
-        #    radio_pin = QRadioButton(pin)
-        #    layout.addWidget(radio_pin)
-
         layout.addStretch(1)
         self.groupPinChoice.setLayout(layout)
 
-    def createTabDataAnalyzer(self):
-        self.bottomLeftTabWidget = QTabWidget()
-        self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Policy.Preferred,
-                QSizePolicy.Policy.Ignored)
-        
-        # graph
-        tab2 = QWidget()
-        textEdit = QTextEdit()
+    def createGroupControllers(self):
+        layout = QHBoxLayout()
+        self.groupControllers = QGroupBox('Arduino Controller')
 
-        plot = pg.PlotWidget()
-        plot.plot([1, 2, 3, 4], [3, 4, 2, 4])
+        # TODO change button display
+        self.btPlayPause = QPushButton('PLAY')
+        self.btPlayPause.clicked.connect(self.btPlayClicked)
 
-        #layout.addWidget(plot)
+        buttonSTOP = QPushButton('REC')
+        buttonLIVE = QPushButton('LIVE')
 
-        tab2hbox = QHBoxLayout()
-        tab2hbox.setContentsMargins(5, 5, 5, 5)
-        tab2hbox.addWidget(plot)
-        tab2.setLayout(tab2hbox)
+        layout.addWidget(self.btPlayPause)
+        layout.addWidget(buttonSTOP)
+        self.groupControllers.setLayout(layout)
 
-        # table
-        tab1 = QWidget()
-        tableWidget = QTableWidget(10, 10)
+    def createTableDataAnalyzer(self):
+        self.table = QWidget()
+        tableWidget = QTableWidget(5, 2)
 
         tab1hbox = QHBoxLayout()
         tab1hbox.setContentsMargins(5, 5, 5, 5)
         tab1hbox.addWidget(tableWidget)
 
-        tab1.setLayout(tab1hbox)
+        self.table.setLayout(tab1hbox)
 
+    def createPlotAnalyzer(self):
+        self.tabPlotter = QTabWidget()
+        self.tabPlotter.setSizePolicy(QSizePolicy.Policy.Preferred,
+                QSizePolicy.Policy.Ignored)
 
-        self.bottomLeftTabWidget.addTab(tab1, "&Table")
-        self.bottomLeftTabWidget.addTab(tab2, "Text &Edit")
+        # simple graph
+        tabSimple = QWidget()
 
+        plotSimple = pg.PlotWidget()
+        plotSimple.plot([1, 2, 3, 4], [3, 4, 2, 4])
+
+        tab2hbox = QHBoxLayout()
+        tab2hbox.setContentsMargins(5, 5, 5, 5)
+        tab2hbox.addWidget(plotSimple)
+        tabSimple.setLayout(tab2hbox)
+
+        # complete graph
+        tabComplete = QWidget()
+
+        plotComplete = pg.PlotWidget()
+        plotComplete.plot([1, 2, 3, 4], [4, 3, 2, 1])
+
+        tab3hbox = QHBoxLayout()
+        tab3hbox.setContentsMargins(5, 5, 5, 5)
+        tab3hbox.addWidget(plotComplete)
+        tabComplete.setLayout(tab3hbox)
+
+        self.tabPlotter.addTab(tabSimple, "Simple")
+        self.tabPlotter.addTab(tabComplete, "Complete")
 
 def main():
     import sys
@@ -118,7 +179,6 @@ def main():
     noiserStation.show()
 
     sys.exit(app.exec_())
-
 
 if  __name__ == '__main__':
     main()
