@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import json, time
 import pyqtgraph as pg
 
 from PyQt5.QtCore import (
@@ -10,7 +11,8 @@ from PyQt5.QtWidgets import (
         QLabel, QLineEdit, QVBoxLayout, QWidget,
         QHBoxLayout, QRadioButton, QGroupBox,
         QComboBox, QDialog, QTabWidget, QSizePolicy,
-        QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox
+        QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
+        QLineEdit, QPlainTextEdit
         )
 
 """
@@ -19,6 +21,7 @@ Class for the main window
 class NoiserWindow(QDialog):
     def __init__(self, parent = None):
         super(NoiserWindow, self).__init__(parent)
+        self.setupGlobalVariables()
         self.initUI()
 
     def initUI(self):
@@ -40,7 +43,7 @@ class NoiserWindow(QDialog):
         layoutTop.addWidget(QLabel("Ports:"))
         layoutTop.addWidget(comboBoxPorts)
         
-        layoutTop.addWidget(QLabel("Step:"))
+        layoutTop.addWidget(QLabel("Frequency:"))
         layoutTop.addWidget(QSpinBox())
 
         layoutTop.addWidget(self.groupPinChoice)
@@ -52,7 +55,11 @@ class NoiserWindow(QDialog):
         
         # data controllers
         layoutGround = QHBoxLayout()
-        layoutGround.addWidget(QLCDNumber())
+
+        self.logger = QPlainTextEdit()
+        self.logger.setReadOnly(True)
+        layoutGround.addWidget(self.logger)
+        self.log("isto e um teste")
         layoutGround.addWidget(self.groupControllers)
 
         # general info about connection
@@ -63,7 +70,7 @@ class NoiserWindow(QDialog):
         # layouts generator
         layoutMain = QVBoxLayout()
 
-        # positioning
+        # positioning and relative weight in the window
         layoutMain.addLayout(layoutTop)
         layoutMain.addStretch(1)
         layoutMain.addLayout(layoutMiddle)
@@ -74,33 +81,37 @@ class NoiserWindow(QDialog):
 
         self.setLayout(layoutMain)
 
-    @pyqtSlot()
-    def btPlayClicked(self):
-        title = 'NOISER - wave analyser'
-        self.setWindowTitle(title + ' (LIVE reading...)')
+    def btPlayPauseClicked(self):
+        if(self.isReading):
+            self.stopReadingData()
+            self.btPlayPause.setText('PLAY')
+        else:
+            self.startReadingData()
+            self.btPlayPause.setText('PAUSE')
+    
+    def btLiveReadPressed(self):
+        self.startReadingData()
+        self.btLiveRead.setText('READING')
 
-        self.btPlayPause.setText('PAUSE')
+    def btLiveReadReleased(self):
+        self.stopReadingData()
+        self.btLiveRead.setText('LIVE')
 
+    def btScheduledClicked(self):
+        if(self.isReading):
+            self.stopReadingData()
+            self.btScheduledRead.setText('SCHEDULE')
+        else:
+            self.startReadingData()
+            self.btScheduledRead.setText('READING')
 
     def bt_plot_clicked(self):
         print(self.bt_plot.isChecked())
         self.bt_plot.setEnabled(False)
 
-    @pyqtSlot()
-    def bt_liveRead_pressed(self):
-        title = 'Noiser GUI'
-        self.setWindowTitle(title + ' (LIVE reading...)')
-
-        print("reading...")
-
-    @pyqtSlot()
-    def bt_liveRead_released(self):
-        title = 'Noiser GUI'
-        self.setWindowTitle(title)
-
-        print("stopped reading!")
-
-
+    """
+        Creates the group for radio pins
+    """
     def createGroupAnalogPinChoice(self):
         layout = QHBoxLayout()
         self.groupPinChoice = QGroupBox('Analog PIN')
@@ -120,13 +131,19 @@ class NoiserWindow(QDialog):
 
         # TODO change button display
         self.btPlayPause = QPushButton('PLAY')
-        self.btPlayPause.clicked.connect(self.btPlayClicked)
+        self.btPlayPause.clicked.connect(self.btPlayPauseClicked)
 
-        buttonSTOP = QPushButton('REC')
-        buttonLIVE = QPushButton('LIVE')
+        self.btLiveRead = QPushButton('LIVE')
+        self.btLiveRead.pressed.connect(self.btLiveReadPressed)
+        self.btLiveRead.released.connect(self.btLiveReadReleased)
+
+        self.btScheduledRead = QPushButton('SCHEDULE')
+        self.btScheduledRead.clicked.connect(self.btScheduledClicked)
 
         layout.addWidget(self.btPlayPause)
-        layout.addWidget(buttonSTOP)
+        layout.addWidget(self.btLiveRead)
+        layout.addWidget(self.btScheduledRead)
+
         self.groupControllers.setLayout(layout)
 
     def createTableDataAnalyzer(self):
@@ -169,9 +186,33 @@ class NoiserWindow(QDialog):
         self.tabPlotter.addTab(tabSimple, "Simple")
         self.tabPlotter.addTab(tabComplete, "Complete")
 
+    def startReadingData(self):
+        self.isReading = True
+        self.setWindowTitle(self.title + ' (🟢 reading...)')
+        
+        self.log('Started reading...', 'record')
+        
+    def stopReadingData(self):
+        self.isReading = False
+        self.setWindowTitle(self.title)
+
+        self.log('Stopped reading.', 'stop')
+
+    def log(self, message, type='info'):
+        logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message + '\t' + self.emoji_dict[type]
+        self.logger.appendPlainText(logMessage)
+
+    def setupGlobalVariables(self, configs_path='./configs.json'):
+        with open(configs_path, 'r') as file_configs:
+            configs = json.load(file_configs)   # its a json object
+
+        self.title = configs['main_window']['title']
+        self.isReading = configs['settings']['reading_at_startup']
+        self.emoji_dict = configs['emojis_dict']
+
 def main():
     import sys
-    import numpy as np
+    import numpy as np    
 
     # application singleton instance
     app = QApplication(sys.argv)
@@ -182,3 +223,5 @@ def main():
 
 if  __name__ == '__main__':
     main()
+
+# readstringuntil \n

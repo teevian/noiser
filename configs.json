@@ -1,0 +1,20 @@
+{
+    "meta" : {
+        "authors" : ["Telmo Vaz", "Rafael Conde"],
+        "license" : "Open Source"
+    },
+    "settings" : {
+        "reading_at_startup" : "False"
+    },
+    "main_window" : {
+        "title" : "NOISER",
+        "dimen" : [800, 600],
+        "dimen_min" : [600, 400]
+    },
+    "emojis_dict" : {
+        "info" : "",
+        "error" : "❗️",
+        "record" : "🟢",
+        "stop" : "🟥"
+    }
+}
