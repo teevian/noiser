@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import json, time
+import json, time, os
 import pyqtgraph as pg
 
 from PyQt5.QtCore import (
@@ -12,31 +12,40 @@ from PyQt5.QtWidgets import (
         QHBoxLayout, QRadioButton, QGroupBox,
         QComboBox, QDialog, QTabWidget, QSizePolicy,
         QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
-        QLineEdit, QPlainTextEdit
+        QLineEdit, QPlainTextEdit, QMenuBar, QMenu, QToolBar,
+        QAction
+        )
+from PyQt5.QtGui import (
+        QIcon
         )
 
 """
 Class for the main window
 """
-class NoiserWindow(QDialog):
+class NoiserWindow(QMainWindow):
     def __init__(self, parent = None):
         super(NoiserWindow, self).__init__(parent)
         self.setupGlobalVariables()
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle('NOISER - wave analyser')
+        self.setWindowTitle(self.title)
         self.setFixedSize(QSize(800, 600))
         self.setMinimumSize(QSize(600, 400))
+
+        self._createMenuBar()
+        self._createToolBars()
+        self._createStatusBar()
 
         self.createGroupAnalogPinChoice()
         self.createPlotAnalyzer()
         self.createTableDataAnalyzer()
         self.createGroupControllers()
 
-        ports = ['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2']
+        # list comprehension to extract all files starting with "ttyACM" at /dev
+        ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
         comboBoxPorts = QComboBox()
-        comboBoxPorts.addItems(ports)
+        comboBoxPorts.addItems(ports if ports else ['no board'])
 
         # top widgets
         layoutTop = QHBoxLayout()
@@ -59,27 +68,81 @@ class NoiserWindow(QDialog):
         self.logger = QPlainTextEdit()
         self.logger.setReadOnly(True)
         layoutGround.addWidget(self.logger)
-        self.log("isto e um teste")
         layoutGround.addWidget(self.groupControllers)
 
-        # general info about connection
-        layoutBottom = QHBoxLayout()
-        labelArduinoDescription = QLabel('Arduino Connected')
-        layoutBottom.addWidget(labelArduinoDescription)
-        
         # layouts generator
         layoutMain = QVBoxLayout()
 
         # positioning and relative weight in the window
         layoutMain.addLayout(layoutTop)
-        layoutMain.addStretch(1)
+        layoutMain.addStretch(0)
         layoutMain.addLayout(layoutMiddle)
         layoutMain.addStretch(4)
         layoutMain.addLayout(layoutGround)
         layoutMain.addStretch(1)
-        layoutMain.addLayout(layoutBottom)
 
-        self.setLayout(layoutMain)
+        # renders the layout into the QMainWindow
+        container = QWidget()
+        container.setLayout(layoutMain)
+        self.setCentralWidget(container)
+        #self.setLayout(layoutMain)
+
+    def _createMenuBar(self):
+        menuBar = self.menuBar()
+        # Creating menus using a QMenu object
+        fileMenu = QMenu("File", self)
+        menuBar.addMenu(fileMenu)
+        # Creating menus using a title
+        helpMenu = menuBar.addMenu("HHelp")
+
+    # TODO improve this programatically
+    def _createToolBars(self):
+        # Toolbar instance
+        # handles instance and file (new, save, load, delete)
+        toolbarFile = QToolBar('Instance management toolbar')
+        toolbarFile.setIconSize(QSize(24, 24))
+        toolbarFile.setMovable(False)
+        self.addToolBar(toolbarFile)
+
+        # new instance
+        btNewInstance = QAction(QIcon('./data/res/new.svg'), 'New', self)
+        btNewInstance.setStatusTip('Will create a new instance')
+        #btNewInstance.setCheckable(True)
+        #button_action.triggered.connect(self.onMyToolBarButtonClick)
+        toolbarFile.addAction(btNewInstance)
+
+        # save instance
+        btSaveInstance = QAction(QIcon('./data/res/save.svg'), 'Save', self)
+        btSaveInstance.setStatusTip("Saves the current instance to a file")
+        #btSaveInstance.setCheckable(True)
+        #button_action.triggered.connect(self.onMyToolBarButtonClick)
+        toolbarFile.addAction(btSaveInstance)
+
+        # load instance
+        btLoadInstance = QAction(QIcon('./data/res/settings.svg'), 'Load', self)
+        btLoadInstance.setStatusTip("Loads a new instance froma  file")
+        #btLoadInstance.setCheckable(True)
+        #button_action.triggered.connect(self.onMyToolBarButtonClick)
+        toolbarFile.addAction(btLoadInstance)
+
+        # Toolbar connection settings
+        # handles connection settings with arduino
+        toolbarConnectionSettings = QToolBar('Connection settings with Arduino')
+        toolbarConnectionSettings.setIconSize(QSize(24, 24))
+        self.addToolBar(toolbarConnectionSettings)
+
+        # list comprehension to extract all files starting with "ttyACM" at /dev
+        ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
+        comboBoxPorts = QComboBox()
+        comboBoxPorts.addItems(ports if ports else ['no board'])
+        toolbarConnectionSettings.addWidget(comboBoxPorts)
+
+    def _createStatusBar(self):
+        self.statusbar = self.statusBar()
+        self.statusbar.showMessage("Arduino Connected!", 3000)
+
+        self.labelFilename = QLabel('this.iad')
+        self.statusbar.addPermanentWidget(self.labelFilename)
 
     def btPlayPauseClicked(self):
         if(self.isReading):
@@ -129,7 +192,6 @@ class NoiserWindow(QDialog):
         layout = QHBoxLayout()
         self.groupControllers = QGroupBox('Arduino Controller')
 
-        # TODO change button display
         self.btPlayPause = QPushButton('PLAY')
         self.btPlayPause.clicked.connect(self.btPlayPauseClicked)
 
@@ -164,7 +226,7 @@ class NoiserWindow(QDialog):
         # simple graph
         tabSimple = QWidget()
 
-        plotSimple = pg.PlotWidget()
+        plotSimple = pg.PlotWidget()    
         plotSimple.plot([1, 2, 3, 4], [3, 4, 2, 4])
 
         tab2hbox = QHBoxLayout()
