@@ -4,10 +4,11 @@
         "license" : "Open Source"
     },
     "settings" : {
-        "reading_at_startup" : "False"
+        "startup_reading" : "False",
+        "startup_performance" : "high"
     },
     "main_window" : {
-        "title" : "NOISER",
+        "title" : "noisr",
         "dimen" : [800, 600],
         "dimen_min" : [600, 400]
     },
@@ -16,5 +17,13 @@
         "error" : "❗️",
         "record" : "🟢",
         "stop" : "🟥"
+    },
+    "icons" : {
+        "avicon" : "./data/res/avicon.svg",
+        "splash_screen" : "./data/res/splash_screen.svg",
+        "new_instance" : "./data/res/instance_new.svg",
+        "save_instance" : "./data/res/instance_save.svg",
+        "load_instance" : "./data/res/instance_load.svg",
+        "save_data" : "./data/res/data_save.svg"
     }
 }

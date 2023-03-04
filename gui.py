@@ -13,10 +13,10 @@ from PyQt5.QtWidgets import (
         QComboBox, QDialog, QTabWidget, QSizePolicy,
         QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
         QLineEdit, QPlainTextEdit, QMenuBar, QMenu, QToolBar,
-        QAction
+        QAction, QDoubleSpinBox, QCheckBox, QGridLayout
         )
 from PyQt5.QtGui import (
-        QIcon
+        QIcon, QIntValidator
         )
 
 """
@@ -42,44 +42,34 @@ class NoiserWindow(QMainWindow):
         self.createTableDataAnalyzer()
         self.createGroupControllers()
 
-        # list comprehension to extract all files starting with "ttyACM" at /dev
-        ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
-        comboBoxPorts = QComboBox()
-        comboBoxPorts.addItems(ports if ports else ['no board'])
-
-        # top widgets
-        layoutTop = QHBoxLayout()
-        layoutTop.addWidget(QLabel("Ports:"))
-        layoutTop.addWidget(comboBoxPorts)
-        
-        layoutTop.addWidget(QLabel("Frequency:"))
-        layoutTop.addWidget(QSpinBox())
-
-        layoutTop.addWidget(self.groupPinChoice)
-        
         # data analysis widgets (middle)
         layoutMiddle = QHBoxLayout()
         layoutMiddle.addWidget(self.tabPlotter)
         layoutMiddle.addWidget(self.table)
         
         # data controllers
-        layoutGround = QHBoxLayout()
+        layoutBottom = QHBoxLayout()
+        layoutBottomController = QVBoxLayout()
 
         self.logger = QPlainTextEdit()
         self.logger.setReadOnly(True)
-        layoutGround.addWidget(self.logger)
-        layoutGround.addWidget(self.groupControllers)
+        self.logger.setFixedHeight(self.logger.fontMetrics().lineSpacing() * 12) # to only allow 5 lines height
+        layoutBottom.addWidget(self.logger, alignment=Qt.AlignRight | Qt.AlignBottom)
+        layoutBottom.addStretch(1)
+        layoutBottomController.addWidget(self.groupPinChoice)
+        layoutBottomController.addWidget(self.groupControllers)
+        layoutBottom.addStretch()
+
+        layoutBottom.addLayout(layoutBottomController)
 
         # layouts generator
         layoutMain = QVBoxLayout()
 
         # positioning and relative weight in the window
-        layoutMain.addLayout(layoutTop)
-        layoutMain.addStretch(0)
         layoutMain.addLayout(layoutMiddle)
-        layoutMain.addStretch(4)
-        layoutMain.addLayout(layoutGround)
         layoutMain.addStretch(1)
+        layoutMain.addLayout(layoutBottom)
+        layoutMain.addStretch(0)
 
         # renders the layout into the QMainWindow
         container = QWidget()
@@ -93,7 +83,7 @@ class NoiserWindow(QMainWindow):
         fileMenu = QMenu("File", self)
         menuBar.addMenu(fileMenu)
         # Creating menus using a title
-        helpMenu = menuBar.addMenu("HHelp")
+        helpMenu = menuBar.addMenu("Help")
 
     # TODO improve this programatically
     def _createToolBars(self):
@@ -114,14 +104,12 @@ class NoiserWindow(QMainWindow):
         # save instance
         btSaveInstance = QAction(QIcon('./data/res/save.svg'), 'Save', self)
         btSaveInstance.setStatusTip("Saves the current instance to a file")
-        #btSaveInstance.setCheckable(True)
         #button_action.triggered.connect(self.onMyToolBarButtonClick)
         toolbarFile.addAction(btSaveInstance)
 
         # load instance
         btLoadInstance = QAction(QIcon('./data/res/settings.svg'), 'Load', self)
         btLoadInstance.setStatusTip("Loads a new instance froma  file")
-        #btLoadInstance.setCheckable(True)
         #button_action.triggered.connect(self.onMyToolBarButtonClick)
         toolbarFile.addAction(btLoadInstance)
 
@@ -136,6 +124,9 @@ class NoiserWindow(QMainWindow):
         comboBoxPorts = QComboBox()
         comboBoxPorts.addItems(ports if ports else ['no board'])
         toolbarConnectionSettings.addWidget(comboBoxPorts)
+
+        toolbarConnectionSettings.addWidget(QLabel('rate:'))
+        toolbarConnectionSettings.addWidget(QSpinBox())
 
     def _createStatusBar(self):
         self.statusbar = self.statusBar()
@@ -152,6 +143,7 @@ class NoiserWindow(QMainWindow):
             self.startReadingData()
             self.btPlayPause.setText('PAUSE')
     
+    # TODO APPLY TO A TOGGLE
     def btLiveReadPressed(self):
         self.startReadingData()
         self.btLiveRead.setText('READING')
@@ -176,37 +168,64 @@ class NoiserWindow(QMainWindow):
         Creates the group for radio pins
     """
     def createGroupAnalogPinChoice(self):
-        layout = QHBoxLayout()
+        layoutGridPins = QGridLayout()
         self.groupPinChoice = QGroupBox('Analog PIN')
 
-        buttons = [QRadioButton('A{}'.format(i)) for i in range(6)]
-        buttons[0].setChecked(True)
+        self.analogPin = []
+        for i in range(6):
+            row, col = i // 3, i % 3    # organizes in a 2x3 grid
+            btRadio = QRadioButton(f'A{i}')
+            layoutGridPins.addWidget(btRadio, row, col)
+            self.analogPin.append(btRadio)
 
-        for pin in buttons:
-            layout.addWidget(pin)
-
-        layout.addStretch(1)
-        self.groupPinChoice.setLayout(layout)
+        self.analogPin[0].setChecked(True)
+        self.groupPinChoice.setLayout(layoutGridPins)
 
     def createGroupControllers(self):
+
+        # time box (parses input)
+        editTime = QLineEdit()
+        editTime.setFixedWidth(50)
+        validateTime = QIntValidator()
+        validateTime.setBottom(0)
+        editTime.setValidator(validateTime)
+        
+        comboTimeUnits = QComboBox()
+        comboTimeUnits.addItems(('s', 'ms'))
+
+        layoutHTime = QHBoxLayout()
+        layoutHTime.addWidget(QLabel('Time:'))
+        layoutHTime.addWidget(editTime)
+        layoutHTime.addWidget(comboTimeUnits)
+
+        # stars at box
+        comboStartAt = QComboBox()
+        comboStartAt.addItems(('right away', 'when stabilized'))
+
+        layoutHStartAt = QHBoxLayout()
+        layoutHStartAt.addWidget(QLabel('Start at:'))
+        layoutHStartAt.addWidget(comboStartAt)
+
+        layoutVContainer = QVBoxLayout()
+        layoutVContainer.addLayout(layoutHTime)
+        layoutVContainer.addLayout(layoutHStartAt)
+
+        layoutVContainer.addStretch()
+
         layout = QHBoxLayout()
-        self.groupControllers = QGroupBox('Arduino Controller')
+
+        self.groupControllers = QGroupBox('Recorder')
 
         self.btPlayPause = QPushButton('PLAY')
         self.btPlayPause.clicked.connect(self.btPlayPauseClicked)
-
-        self.btLiveRead = QPushButton('LIVE')
-        self.btLiveRead.pressed.connect(self.btLiveReadPressed)
-        self.btLiveRead.released.connect(self.btLiveReadReleased)
 
         self.btScheduledRead = QPushButton('SCHEDULE')
         self.btScheduledRead.clicked.connect(self.btScheduledClicked)
 
         layout.addWidget(self.btPlayPause)
-        layout.addWidget(self.btLiveRead)
         layout.addWidget(self.btScheduledRead)
 
-        self.groupControllers.setLayout(layout)
+        self.groupControllers.setLayout(layoutVContainer)
 
     def createTableDataAnalyzer(self):
         self.table = QWidget()
@@ -223,30 +242,38 @@ class NoiserWindow(QMainWindow):
         self.tabPlotter.setSizePolicy(QSizePolicy.Policy.Preferred,
                 QSizePolicy.Policy.Ignored)
 
-        # simple graph
         tabSimple = QWidget()
 
+        # simple graph
         plotSimple = pg.PlotWidget()    
         plotSimple.plot([1, 2, 3, 4], [3, 4, 2, 4])
 
-        tab2hbox = QHBoxLayout()
-        tab2hbox.setContentsMargins(5, 5, 5, 5)
-        tab2hbox.addWidget(plotSimple)
-        tabSimple.setLayout(tab2hbox)
+        tabPlotContainer = QVBoxLayout()
+        tabPlotContainer.setContentsMargins(5, 5, 5, 5)
+        tabPlotContainer.addWidget(plotSimple)
 
-        # complete graph
-        tabComplete = QWidget()
+        plotOptionsContainer = QHBoxLayout()
+        plotOptionsContainer.addWidget(QLabel('moving average: '))
+        plotOptionsContainer.addWidget(QCheckBox())
+        plotOptionsContainer.addStretch()
 
-        plotComplete = pg.PlotWidget()
-        plotComplete.plot([1, 2, 3, 4], [4, 3, 2, 1])
+        tabPlotContainer.addLayout(plotOptionsContainer)
+        tabSimple.setLayout(tabPlotContainer)
 
-        tab3hbox = QHBoxLayout()
-        tab3hbox.setContentsMargins(5, 5, 5, 5)
-        tab3hbox.addWidget(plotComplete)
-        tabComplete.setLayout(tab3hbox)
+        # table data
+        tabTable = QWidget()
+        tableWidget = QTableWidget(5, 4)
+        tableWidget.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'PWM'])
+        tableWidget.horizontalHeader().setStretchLastSection(True)
 
-        self.tabPlotter.addTab(tabSimple, "Simple")
-        self.tabPlotter.addTab(tabComplete, "Complete")
+        tab1hbox = QHBoxLayout()
+        tab1hbox.setContentsMargins(5, 5, 5, 5)
+        tab1hbox.addWidget(tableWidget)
+
+        tabTable.setLayout(tab1hbox)
+
+        self.tabPlotter.addTab(tabSimple, "Plot")
+        self.tabPlotter.addTab(tabTable, "Table")
 
     def startReadingData(self):
         self.isReading = True
@@ -269,7 +296,7 @@ class NoiserWindow(QMainWindow):
             configs = json.load(file_configs)   # its a json object
 
         self.title = configs['main_window']['title']
-        self.isReading = configs['settings']['reading_at_startup']
+        self.isReading = configs['settings']['startup_reading']
         self.emoji_dict = configs['emojis_dict']
 
 def main():
