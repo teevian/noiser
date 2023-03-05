@@ -1,0 +1,24 @@
+{
+    "meta" : {
+        "authors" : ["Telmo Vaz", "Rafael Conde"],
+        "version" : "1.0",
+        "license" : "Open Source"
+    },
+    "settings" : {
+        "startup_performance" : "high"
+    },
+    "toolbars" : {
+        "icon_size" : 24
+    },
+    "main_window" : {
+        "title" : "noisr",
+        "dimen_width" : 1000,
+        "dimen_height" : 800
+    },
+    "emojis_dict" : {
+        "info" : "",
+        "error" : "❗️",
+        "record" : "🟢",
+        "stop" : "🟥"
+    }
+}

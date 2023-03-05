@@ -19,45 +19,50 @@ from PyQt5.QtGui import (
         QIcon, QIntValidator
         )
 
-"""
-Class for the main window
-"""
 class NoiserWindow(QMainWindow):
+    """Class for handling a GUI instance"""
+
     def __init__(self, parent = None):
         super(NoiserWindow, self).__init__(parent)
-        self.setupGlobalVariables()
+        self.setupEnvironment()
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle(self.title)
-        self.resize(QSize(1000, 800))
+        """Sets up the graphical user interface"""
 
+        self.setWindowTitle(self.configs['main_window']['title'])
+        self.setWindowIcon(QIcon('./data/icons/avicon.svg'))
+        self.resize(QSize(
+            self.configs['main_window']['dimen_width'],
+            self.configs['main_window']['dimen_height'])
+            )
+
+        # create basic interface
         self._createMenuBar()
         self._createToolBars()
         self._createStatusBar()
 
-        self.createPlotAnalyzer()
-        self.createTableDataAnalyzer()
+        self.createAnalyzer()
         self.createGroupAnalogPinChoice()
         self.createGroupControllers()
 
         # plotter
         layoutLeftContainer = QVBoxLayout()
-        layoutLeftContainer.addWidget(self.tabPlotter, alignment=Qt.AlignTop)
+        layoutLeftContainer.addWidget(self.tabPlotter, alignment = Qt.AlignTop)
         layoutLeftContainer.addStretch()
 
         # logger
         self.logger = QPlainTextEdit()
         self.logger.setReadOnly(True)
-        self.logger.setFixedHeight(self.logger.fontMetrics().lineSpacing() * 12)
+        #self.logger.setFixedHeight(self.logger.fontMetrics().lineSpacing() * 8)
         layoutLeftContainer.addWidget(self.logger)
 
         # note taking block - misses ADD and CLEAR note
         self.note = QTextEdit()
         self.note.setUndoRedoEnabled(False)
         self.note.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.note.setFixedHeight(80)
-        self.note.setFixedWidth(235) # TODO automate this
+        self.note.setFixedHeight(self.note.fontMetrics().lineSpacing() * 4)
+        self.note.setFixedWidth(235) # TODO automate this to become the minimum
         self.note.insertPlainText('note #1 \n')
 
         layoutRightContainer = QVBoxLayout()
@@ -67,6 +72,7 @@ class NoiserWindow(QMainWindow):
         
         layout = QHBoxLayout()
         layout.addWidget(self.btPlayPause)
+        layout.addWidget(self.btRegister)
 
         layoutRightContainer.addLayout(layout)
         layoutRightContainer.addStretch()
@@ -78,28 +84,24 @@ class NoiserWindow(QMainWindow):
 
         container = QWidget()
         container.setLayout(layoutMainContainer)
-        self.setMinimumWidth(800)
-        self.setMinimumHeight(600)
         self.setCentralWidget(container)
 
     # TODO
     def _createMenuBar(self):
-        menuBar = self.menuBar()
-        # Creating menus using a QMenu object
-        fileMenu = QMenu("File", self)
-        menuBar.addMenu(fileMenu)
-        # Creating menus using a title
-        helpMenu = menuBar.addMenu("Help")
+        pass
 
     # TODO improve this programatically
     def _createToolBars(self):
         self._toolBarInstance()
         self._toolbarConnection()
         self._toolbarWorkspace()
+        self._toolbarParameters()
+        self._toolbarNumerics()
 
     def _toolBarInstance(self):
         # Toolbar instance
-        # handles instance and file (new, save, load, delete)
+        #toolbarTest = QToolBar('')
+
         toolbarFile = QToolBar('Instance management toolbar')
         toolbarFile.setIconSize(QSize(24, 24))
         toolbarFile.setMovable(False)
@@ -108,7 +110,6 @@ class NoiserWindow(QMainWindow):
         # new instance
         btNewInstance = QAction(QIcon('./data/res/new.svg'), 'New', self)
         btNewInstance.setStatusTip('Creates new .IAD instance')
-        #btNewInstance.setCheckable(True)
         toolbarFile.addAction(btNewInstance)
 
         # save instance
@@ -135,8 +136,8 @@ class NoiserWindow(QMainWindow):
         toolbarFile.addAction(btSaveDataTXT)
 
     def _toolbarConnection(self):
-        # Toolbar connection settings
-        # handles connection settings with arduino
+        """Settings about connection with the board"""
+        
         toolbarConnectionSettings = QToolBar('Connection settings with Arduino')
         toolbarConnectionSettings.setIconSize(QSize(24, 24))
         self.addToolBar(toolbarConnectionSettings)
@@ -166,6 +167,57 @@ class NoiserWindow(QMainWindow):
         btInfoBoard.setStatusTip('All notes taken at this .IAD instance')
         toolbarWorkspace.addAction(btInfoBoard)
 
+    def _toolbarParameters(self):
+        """Parameters for working plot and data analysis"""
+
+        toolbarParameters = QToolBar('Parameters for data analyzer')
+        toolbarParameters.setIconSize(QSize(24, 24))
+        self.addToolBar(toolbarParameters)
+
+        self.insertToolBarBreak(toolbarParameters)
+
+        self.editThreshold = QLineEdit()
+        self.editThreshold.setFixedWidth(50)
+        #self.editThreshold.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        validateThreshold = QIntValidator()
+        validateThreshold.setRange(-25, 25)
+        self.editThreshold.setValidator(validateThreshold)
+        
+        comboThresholdUnits = QComboBox()
+        comboThresholdUnits.addItems(('V', 'mV'))
+
+        toolbarParameters.addWidget(QLabel('threshold:'))
+        toolbarParameters.addWidget(self.editThreshold)
+        toolbarParameters.addWidget(comboThresholdUnits)
+
+
+    def _toolbarNumerics(self):
+        """Numerical computations to real-time data analysis"""
+
+        toolbar = QToolBar('Numeric Methods')
+        toolbar.setIconSize(QSize(24, 24))
+        toolbar.setFloatable(True)
+        toolbar.setMovable(True)
+        toolbar.setOrientation(Qt.Vertical)
+
+        self.addToolBar(Qt.LeftToolBarArea, toolbar)
+
+        btMovingAverage = QAction(QIcon('./data/res/plot_mean.svg'), 'Notes taken for this instance', self)
+        btMaxMinVoltage = QAction(QIcon('./data/res/plot_peaktopeak.svg'), 'Notes taken for this instance', self)
+        btStdDeviation  = QAction(QIcon('./data/res/plot_measures.svg'), 'Notes taken for this instance', self)
+        btThreshold     = QAction(QIcon('./data/res/plot_tolerance.svg'), 'Notes taken for this instance', self)
+
+        btMovingAverage.setStatusTip('Moving average')
+        btMaxMinVoltage.setStatusTip('Maximum and minimum')
+        btStdDeviation.setStatusTip('Standard Deviation')
+        btThreshold.setStatusTip('Threshold voltage')
+
+        toolbar.addAction(btMovingAverage)
+        toolbar.addAction(btMaxMinVoltage)
+        toolbar.addAction(btStdDeviation)
+        toolbar.addAction(btThreshold)
+
+
     def _createStatusBar(self):
         self.statusbar = self.statusBar()
         self.statusbar.setStyleSheet("background-color: rgb(0, 122, 204);")
@@ -173,6 +225,7 @@ class NoiserWindow(QMainWindow):
 
         self.labelFilename = QLabel('instance_name.iad')
         self.statusbar.addPermanentWidget(self.labelFilename)
+
 
     def btPlayPauseClicked(self):
         if(self.isReading):
@@ -182,12 +235,14 @@ class NoiserWindow(QMainWindow):
             self.startReadingData()
             self.btPlayPause.setText('PAUSE')
     
+    
     def btPlayPauseOnToggled(self, pushed):
         if pushed:
             self.btPlayPause.setIcon(QIcon('./data/res/warning.svg'))
         else:
             self.btPlayPause.setIcon(QIcon('./data/res/target.svg'))
     
+
     # TODO APPLY TO A TOGGLE
     def btLiveReadPressed(self):
         self.startReadingData()
@@ -209,6 +264,7 @@ class NoiserWindow(QMainWindow):
         print(self.bt_plot.isChecked())
         self.bt_plot.setEnabled(False)
 
+
     """
         Creates the group for radio pins
     """
@@ -225,6 +281,7 @@ class NoiserWindow(QMainWindow):
 
         self.analogPin[0].setChecked(True)
         self.groupPinChoice.setLayout(layoutGridPins)
+
 
     def createGroupControllers(self):
         # time box (parses input)
@@ -262,97 +319,80 @@ class NoiserWindow(QMainWindow):
         self.groupControllers.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         self.btPlayPause = QPushButton(QIcon('./data/res/target.svg'), '')
-        self.btPlayPause.setIconSize(QSize(48, 48))
+        self.btPlayPause.setIconSize(QSize(24, 24))
         self.btPlayPause.setCheckable(True)
         self.btPlayPause.toggled.connect(self.btPlayPauseOnToggled)
 
+        self.btRegister = QPushButton(QIcon('./data/res/save_data.svg'), '')
+        self.btRegister.setIconSize(QSize(24, 24))
+        self.btRegister.setCheckable(True)
+        self.btRegister.toggled.connect(self.btPlayPauseOnToggled)
+
         self.groupControllers.setLayout(layoutVContainer)
 
-    def createTableDataAnalyzer(self):
 
-        self.table = QWidget()
-        tableWidget = QTableWidget(5, 2)
+    def createAnalyzer(self):
+        """Generates the Tab screen from which the user will analyze data"""
 
-        tab1hbox = QHBoxLayout()
-        tab1hbox.setContentsMargins(5, 5, 5, 5)
-        tab1hbox.addWidget(tableWidget)
-
-        self.table.setLayout(tab1hbox)
-
-    def createPlotAnalyzer(self):
         self.tabPlotter = QTabWidget()
-        self.tabPlotter.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-        
-        tabSimple = QWidget()
+        self.tabPlotter.setSizePolicy(
+            QSizePolicy.MinimumExpanding,
+            QSizePolicy.MinimumExpanding
+            )
 
-        # simple graph
-        plotSimple = pg.PlotWidget()
-        plotSimple.plot(range(0, 20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7])
-        plotSimple.setAspectLocked(lock=True, ratio=1)
+        # plot
+        plot = pg.PlotWidget()
+        plot.plot(range(0, 20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7])
+        plot.setAspectLocked(lock=True, ratio=1)
 
+        ## plot numerical analysis options
         tabPlotContainer = QVBoxLayout()
         tabPlotContainer.setContentsMargins(5, 5, 5, 5)
-        tabPlotContainer.addWidget(plotSimple)
+        tabPlotContainer.addWidget(plot)
 
-        plotOptionsContainer = QHBoxLayout()
-        plotOptionsContainer.addWidget(QLabel('moving average: '))
-        plotOptionsContainer.addWidget(QCheckBox())
-        plotOptionsContainer.addStretch()
-
-        tabPlotContainer.addLayout(plotOptionsContainer)
-        tabSimple.setLayout(tabPlotContainer)
-
-        # table data
+        # table
         tabTable = QWidget()
         tableWidget = QTableWidget(5, 4)
         tableWidget.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'PWM', ''])
         tableWidget.horizontalHeader().setStretchLastSection(True)
 
         tab1hbox = QHBoxLayout()
-        tab1hbox.setContentsMargins(5, 5, 5, 5)
+        #tab1hbox.setContentsMargins(5, 5, 5, 5)
         tab1hbox.addWidget(tableWidget)
 
         tabTable.setLayout(tab1hbox)
+
+        tabSimple = QWidget()
+        tabSimple.setLayout(tabPlotContainer)
 
         self.tabPlotter.addTab(tabSimple, "Plot")
         self.tabPlotter.addTab(tabTable, "Table")
 
     def startReadingData(self):
+        """Change program mode to start reading data"""
         self.isReading = True
         self.setWindowTitle(self.title + ' (🟢 reading...)')
         
         self.log('Started reading...', 'record')
         
     def stopReadingData(self):
+        """Change program mode to stop reading data"""
+
         self.isReading = False
         self.setWindowTitle(self.title)
 
         self.log('Stopped reading.', 'stop')
 
+
     def log(self, message, type='info'):
+        """Writes the string @message to the logger - sometimes with an emoji"""
+
         logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message + '\t' + self.emoji_dict[type]
         self.logger.appendPlainText(logMessage)
 
-    def setupGlobalVariables(self, configs_path='./configs.json'):
-        with open(configs_path, 'r') as file_configs:
-            configs = json.load(file_configs)   # its a json object
+    # TODO missing args from the caller
+    def setupEnvironment(self, configsPath='./configs/settings.json'):
+        """Sets up the global environment according to the .configs.json file"""
 
-        self.title = configs['main_window']['title']
-        self.isReading = configs['settings']['startup_reading']
-        self.emoji_dict = configs['emojis_dict']
-
-def main():
-    import sys
-    import numpy as np    
-
-    # application singleton instance
-    app = QApplication(sys.argv)
-    noiserStation = NoiserWindow()
-    noiserStation.show()
-
-    sys.exit(app.exec_())
-
-if  __name__ == '__main__':
-    main()
-
-# readstringuntil \n
+        with open(configsPath, 'r') as file_configs:
+            self.configs = json.load(file_configs)

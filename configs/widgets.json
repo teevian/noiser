@@ -1,0 +1,21 @@
+{
+    "toolbars" : {
+        "file" : {
+            "action_1" : {
+                "name" : "New File",
+                "icon" : "ic_file_new.svg",
+                "status_tip" : "Creates new .IAD instance"
+            },
+            "action_2" : {
+                "name" : "Save File",
+                "icon" : "ic_file_save.svg",
+                "status_tip" : "Save this .IAD instance"
+            },
+            "action_3" : {
+                "name" : "Load File",
+                "icon" : "ic_file_load.svg",
+                "status_tip" : "Loads a .IAD instance"
+            }
+        }
+    }
+}
