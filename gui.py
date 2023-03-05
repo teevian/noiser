@@ -30,53 +30,59 @@ class NoiserWindow(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle(self.title)
-        self.setFixedSize(QSize(800, 600))
+        self.resize(QSize(1000, 800))
         self.setMinimumSize(QSize(600, 400))
 
         self._createMenuBar()
         self._createToolBars()
         self._createStatusBar()
 
-        self.createGroupAnalogPinChoice()
         self.createPlotAnalyzer()
         self.createTableDataAnalyzer()
+        self.createGroupAnalogPinChoice()
         self.createGroupControllers()
 
-        # data analysis widgets (middle)
-        layoutMiddle = QHBoxLayout()
-        layoutMiddle.addWidget(self.tabPlotter)
-        layoutMiddle.addWidget(self.table)
-        
-        # data controllers
-        layoutBottom = QHBoxLayout()
-        layoutBottomController = QVBoxLayout()
+        layoutContainer = QHBoxLayout()
+        layoutLeftContainer = QVBoxLayout()
+
+        layoutLeftContainer.addWidget(self.tabPlotter, alignment=Qt.AlignLeft | Qt.AlignTop)
+        layoutLeftContainer.addStretch()
+
+        # note taking block - misses ADD and CLEAR note
+        self.note = QTextEdit()
+        self.note.setUndoRedoEnabled(False)
+        self.note.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.note.setFixedHeight(80)
+        self.note.setFixedWidth(235) # TODO automate this
+        self.note.insertPlainText('note #1 \n')
 
         self.logger = QPlainTextEdit()
         self.logger.setReadOnly(True)
-        self.logger.setFixedHeight(self.logger.fontMetrics().lineSpacing() * 12) # to only allow 5 lines height
-        layoutBottom.addWidget(self.logger, alignment=Qt.AlignRight | Qt.AlignBottom)
-        layoutBottom.addStretch(1)
-        layoutBottomController.addWidget(self.groupPinChoice)
-        layoutBottomController.addWidget(self.groupControllers)
-        layoutBottom.addStretch()
+        self.logger.setFixedWidth(600)
+        self.logger.setSizePolicy(QSizePolicy.Policy.Expanding, self.logger.fontMetrics().lineSpacing() * 12)
+        layoutLeftContainer.addWidget(self.logger, alignment=Qt.AlignLeft | Qt.AlignBottom)
 
-        layoutBottom.addLayout(layoutBottomController)
+        layoutRightContainer = QVBoxLayout()
+        layoutRightContainer.addWidget(self.note)
+        layoutRightContainer.addWidget(self.groupPinChoice)
+        layoutRightContainer.addWidget(self.groupControllers)
+        
+        layout = QHBoxLayout()
 
-        # layouts generator
-        layoutMain = QVBoxLayout()
+        layout.addWidget(self.btPlayPause)
+        #layout.addWidget(self.btScheduledRead)
 
-        # positioning and relative weight in the window
-        layoutMain.addLayout(layoutMiddle)
-        layoutMain.addStretch(1)
-        layoutMain.addLayout(layoutBottom)
-        layoutMain.addStretch(0)
+        layoutRightContainer.addLayout(layout)
+        layoutRightContainer.addStretch()
 
-        # renders the layout into the QMainWindow
+        layoutContainer.addLayout(layoutLeftContainer)
+        layoutContainer.addLayout(layoutRightContainer)
+
         container = QWidget()
-        container.setLayout(layoutMain)
+        container.setLayout(layoutContainer)
         self.setCentralWidget(container)
-        #self.setLayout(layoutMain)
 
+    # TODO
     def _createMenuBar(self):
         menuBar = self.menuBar()
         # Creating menus using a QMenu object
@@ -87,6 +93,11 @@ class NoiserWindow(QMainWindow):
 
     # TODO improve this programatically
     def _createToolBars(self):
+        self._toolBarInstance()
+        self._toolbarConnection()
+        self._toolbarWorkspace()
+
+    def _toolBarInstance(self):
         # Toolbar instance
         # handles instance and file (new, save, load, delete)
         toolbarFile = QToolBar('Instance management toolbar')
@@ -96,28 +107,44 @@ class NoiserWindow(QMainWindow):
 
         # new instance
         btNewInstance = QAction(QIcon('./data/res/new.svg'), 'New', self)
-        btNewInstance.setStatusTip('Will create a new instance')
+        btNewInstance.setStatusTip('Creates new .IAD instance')
         #btNewInstance.setCheckable(True)
-        #button_action.triggered.connect(self.onMyToolBarButtonClick)
         toolbarFile.addAction(btNewInstance)
 
         # save instance
-        btSaveInstance = QAction(QIcon('./data/res/save.svg'), 'Save', self)
-        btSaveInstance.setStatusTip("Saves the current instance to a file")
-        #button_action.triggered.connect(self.onMyToolBarButtonClick)
+        btSaveInstance = QAction(QIcon('./data/res/instance_save.svg'), 'Save', self)
+        btSaveInstance.setStatusTip("Saves current instance to a .IAD file")
         toolbarFile.addAction(btSaveInstance)
 
         # load instance
-        btLoadInstance = QAction(QIcon('./data/res/settings.svg'), 'Load', self)
-        btLoadInstance.setStatusTip("Loads a new instance froma  file")
+        btLoadInstance = QAction(QIcon('./data/res/instance_load.svg'), 'Load', self)
+        btLoadInstance.setStatusTip("Loads new instance from a .IAD file")
         #button_action.triggered.connect(self.onMyToolBarButtonClick)
         toolbarFile.addAction(btLoadInstance)
 
+        toolbarFile.addSeparator()
+
+        # load instance
+        btSaveDataCSV = QAction(QIcon('./data/res/save_data_csv.svg'), 'Save data CSV', self)
+        btSaveDataCSV.setStatusTip("Saves data into a .csv file")
+        toolbarFile.addAction(btSaveDataCSV)
+
+        # load instance
+        btSaveDataTXT = QAction(QIcon('./data/res/save_data_txt.svg'), 'Save data TXT', self)
+        btSaveDataTXT.setStatusTip("Saves data into a .txt file")
+        toolbarFile.addAction(btSaveDataTXT)
+
+    def _toolbarConnection(self):
         # Toolbar connection settings
         # handles connection settings with arduino
         toolbarConnectionSettings = QToolBar('Connection settings with Arduino')
         toolbarConnectionSettings.setIconSize(QSize(24, 24))
         self.addToolBar(toolbarConnectionSettings)
+
+        # info board instance
+        btInfoBoard = QAction(QIcon('./data/res/info_board.svg'), 'Info board', self)
+        btInfoBoard.setStatusTip("Provides info about the connected board")
+        toolbarConnectionSettings.addAction(btInfoBoard)        
 
         # list comprehension to extract all files starting with "ttyACM" at /dev
         ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
@@ -128,11 +155,23 @@ class NoiserWindow(QMainWindow):
         toolbarConnectionSettings.addWidget(QLabel('rate:'))
         toolbarConnectionSettings.addWidget(QSpinBox())
 
+
+    def _toolbarWorkspace(self):
+        toolbarWorkspace = QToolBar('Workstation objects')
+        toolbarWorkspace.setIconSize(QSize(24, 24))
+        self.addToolBar(toolbarWorkspace)
+
+        # info board instance
+        btInfoBoard = QAction(QIcon('./data/res/notes.svg'), 'Notes taken for this instance', self)
+        btInfoBoard.setStatusTip('All notes taken at this .IAD instance')
+        toolbarWorkspace.addAction(btInfoBoard)
+
     def _createStatusBar(self):
         self.statusbar = self.statusBar()
+        self.statusbar.setStyleSheet("background-color: rgb(0, 122, 204);")
         self.statusbar.showMessage("Arduino Connected!", 3000)
 
-        self.labelFilename = QLabel('this.iad')
+        self.labelFilename = QLabel('instance_name.iad')
         self.statusbar.addPermanentWidget(self.labelFilename)
 
     def btPlayPauseClicked(self):
@@ -142,6 +181,12 @@ class NoiserWindow(QMainWindow):
         else:
             self.startReadingData()
             self.btPlayPause.setText('PAUSE')
+    
+    def btPlayPauseOnToggled(self, pushed):
+        if pushed:
+            self.btPlayPause.setIcon(QIcon('./data/res/warning.svg'))
+        else:
+            self.btPlayPause.setIcon(QIcon('./data/res/target.svg'))
     
     # TODO APPLY TO A TOGGLE
     def btLiveReadPressed(self):
@@ -182,7 +227,6 @@ class NoiserWindow(QMainWindow):
         self.groupPinChoice.setLayout(layoutGridPins)
 
     def createGroupControllers(self):
-
         # time box (parses input)
         editTime = QLineEdit()
         editTime.setFixedWidth(50)
@@ -203,7 +247,7 @@ class NoiserWindow(QMainWindow):
         comboStartAt.addItems(('right away', 'when stabilized'))
 
         layoutHStartAt = QHBoxLayout()
-        layoutHStartAt.addWidget(QLabel('Start at:'))
+        layoutHStartAt.addWidget(QLabel('Starting:'))
         layoutHStartAt.addWidget(comboStartAt)
 
         layoutVContainer = QVBoxLayout()
@@ -212,18 +256,15 @@ class NoiserWindow(QMainWindow):
 
         layoutVContainer.addStretch()
 
-        layout = QHBoxLayout()
+        self.groupControllers = QGroupBox('Schedule')
+        self.groupControllers.setCheckable(True)
+        self.groupControllers.setChecked(False)
+        self.groupControllers.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        self.groupControllers = QGroupBox('Recorder')
-
-        self.btPlayPause = QPushButton('PLAY')
-        self.btPlayPause.clicked.connect(self.btPlayPauseClicked)
-
-        self.btScheduledRead = QPushButton('SCHEDULE')
-        self.btScheduledRead.clicked.connect(self.btScheduledClicked)
-
-        layout.addWidget(self.btPlayPause)
-        layout.addWidget(self.btScheduledRead)
+        self.btPlayPause = QPushButton(QIcon('./data/res/target.svg'), '')
+        self.btPlayPause.setIconSize(QSize(48, 48))
+        self.btPlayPause.setCheckable(True)
+        self.btPlayPause.toggled.connect(self.btPlayPauseOnToggled)
 
         self.groupControllers.setLayout(layoutVContainer)
 
@@ -239,17 +280,20 @@ class NoiserWindow(QMainWindow):
 
     def createPlotAnalyzer(self):
         self.tabPlotter = QTabWidget()
-        self.tabPlotter.setSizePolicy(QSizePolicy.Policy.Preferred,
-                QSizePolicy.Policy.Ignored)
-
+        self.tabPlotter.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        #self.tabPlotter.setMinimumSize(800, 600)
+        
         tabSimple = QWidget()
+        #tabSimple.setSizePolicy(QWidget.SizePolicy.MinimumExpanding, QWidget.SizePolicy.MinimumExpanding)
 
         # simple graph
-        plotSimple = pg.PlotWidget()    
-        plotSimple.plot([1, 2, 3, 4], [3, 4, 2, 4])
+        plotSimple = pg.PlotWidget()
+        plotSimple.plot(range(0, 20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7])
+        plotSimple.setAspectLocked(lock=True, ratio=1)
 
         tabPlotContainer = QVBoxLayout()
         tabPlotContainer.setContentsMargins(5, 5, 5, 5)
+        #tabPlotContainer.setMinimumSize(800, 600)
         tabPlotContainer.addWidget(plotSimple)
 
         plotOptionsContainer = QHBoxLayout()
@@ -263,7 +307,7 @@ class NoiserWindow(QMainWindow):
         # table data
         tabTable = QWidget()
         tableWidget = QTableWidget(5, 4)
-        tableWidget.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'PWM'])
+        tableWidget.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'PWM', ''])
         tableWidget.horizontalHeader().setStretchLastSection(True)
 
         tab1hbox = QHBoxLayout()
