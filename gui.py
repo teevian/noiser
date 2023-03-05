@@ -269,6 +269,7 @@ class NoiserWindow(QMainWindow):
         self.groupControllers.setLayout(layoutVContainer)
 
     def createTableDataAnalyzer(self):
+        
         self.table = QWidget()
         tableWidget = QTableWidget(5, 2)
 
