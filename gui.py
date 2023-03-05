@@ -31,7 +31,6 @@ class NoiserWindow(QMainWindow):
     def initUI(self):
         self.setWindowTitle(self.title)
         self.resize(QSize(1000, 800))
-        self.setMinimumSize(QSize(600, 400))
 
         self._createMenuBar()
         self._createToolBars()
@@ -42,11 +41,16 @@ class NoiserWindow(QMainWindow):
         self.createGroupAnalogPinChoice()
         self.createGroupControllers()
 
-        layoutContainer = QHBoxLayout()
+        # plotter
         layoutLeftContainer = QVBoxLayout()
-
-        layoutLeftContainer.addWidget(self.tabPlotter, alignment=Qt.AlignLeft | Qt.AlignTop)
+        layoutLeftContainer.addWidget(self.tabPlotter, alignment=Qt.AlignTop)
         layoutLeftContainer.addStretch()
+
+        # logger
+        self.logger = QPlainTextEdit()
+        self.logger.setReadOnly(True)
+        self.logger.setFixedHeight(self.logger.fontMetrics().lineSpacing() * 12)
+        layoutLeftContainer.addWidget(self.logger)
 
         # note taking block - misses ADD and CLEAR note
         self.note = QTextEdit()
@@ -56,30 +60,26 @@ class NoiserWindow(QMainWindow):
         self.note.setFixedWidth(235) # TODO automate this
         self.note.insertPlainText('note #1 \n')
 
-        self.logger = QPlainTextEdit()
-        self.logger.setReadOnly(True)
-        self.logger.setFixedWidth(600)
-        self.logger.setSizePolicy(QSizePolicy.Policy.Expanding, self.logger.fontMetrics().lineSpacing() * 12)
-        layoutLeftContainer.addWidget(self.logger, alignment=Qt.AlignLeft | Qt.AlignBottom)
-
         layoutRightContainer = QVBoxLayout()
         layoutRightContainer.addWidget(self.note)
         layoutRightContainer.addWidget(self.groupPinChoice)
         layoutRightContainer.addWidget(self.groupControllers)
         
         layout = QHBoxLayout()
-
         layout.addWidget(self.btPlayPause)
-        #layout.addWidget(self.btScheduledRead)
 
         layoutRightContainer.addLayout(layout)
         layoutRightContainer.addStretch()
 
-        layoutContainer.addLayout(layoutLeftContainer)
-        layoutContainer.addLayout(layoutRightContainer)
+        # main container that disposes the widgets into two columns
+        layoutMainContainer = QHBoxLayout()
+        layoutMainContainer.addLayout(layoutLeftContainer)
+        layoutMainContainer.addLayout(layoutRightContainer)
 
         container = QWidget()
-        container.setLayout(layoutContainer)
+        container.setLayout(layoutMainContainer)
+        self.setMinimumWidth(800)
+        self.setMinimumHeight(600)
         self.setCentralWidget(container)
 
     # TODO
@@ -269,7 +269,7 @@ class NoiserWindow(QMainWindow):
         self.groupControllers.setLayout(layoutVContainer)
 
     def createTableDataAnalyzer(self):
-        
+
         self.table = QWidget()
         tableWidget = QTableWidget(5, 2)
 
@@ -281,11 +281,9 @@ class NoiserWindow(QMainWindow):
 
     def createPlotAnalyzer(self):
         self.tabPlotter = QTabWidget()
-        self.tabPlotter.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        #self.tabPlotter.setMinimumSize(800, 600)
+        self.tabPlotter.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
         
         tabSimple = QWidget()
-        #tabSimple.setSizePolicy(QWidget.SizePolicy.MinimumExpanding, QWidget.SizePolicy.MinimumExpanding)
 
         # simple graph
         plotSimple = pg.PlotWidget()
@@ -294,7 +292,6 @@ class NoiserWindow(QMainWindow):
 
         tabPlotContainer = QVBoxLayout()
         tabPlotContainer.setContentsMargins(5, 5, 5, 5)
-        #tabPlotContainer.setMinimumSize(800, 600)
         tabPlotContainer.addWidget(plotSimple)
 
         plotOptionsContainer = QHBoxLayout()
