@@ -100,7 +100,9 @@
     },
     "parameters": {
         "settings": {
-            "position": "top"
+            "position": "top",
+            "movable" : "True",
+            "floatable" : "true"
         },
         "actions": [
             {

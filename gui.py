@@ -19,31 +19,37 @@ from PyQt5.QtGui import (
         QIcon, QIntValidator
         )
 
-class NoiserWindow(QMainWindow):
+class NoiserGUI(QMainWindow):
     """Class for handling a GUI instance"""
 
 
     def __init__(self, parent = None):
-        super(NoiserWindow, self).__init__(parent)
+        """Initializes the program"""
+
+        super(NoiserGUI, self).__init__(parent)
         self.setupEnvironment()
         self.initUI()
 
 
     def initUI(self):
-        """Sets up the graphical user interface"""
+        """Sets up the layout and user interface"""
 
-        self.setWindowTitle(self.configs['main_window']['title'])
-        self.setWindowIcon(QIcon('./data/icons/avicon.svg'))
-        self.resize(QSize(
-            self.configs['main_window']['dimen_width'],
-            self.configs['main_window']['dimen_height']))
+        window = self.configs['main_window']
 
-        # create basic interface
+        self.setWindowTitle(window['title'])
+        self.setWindowIcon(QIcon(window['icon']))
+        self.resize(QSize(window['width'], window['height']))
+
+        # create menus
         self._createMenuBar()
         self._createToolBars()
         self._createStatusBar()
 
+        # create widgets
+        self.log = NoiserGUI.Logger()
+
         self.createAnalyzer()
+        self.createNoter()
         self.createGroupAnalogPinChoice()
         self.createGroupControllers()
 
@@ -53,18 +59,9 @@ class NoiserWindow(QMainWindow):
         layoutLeftContainer.addStretch()
 
         # logger
-        self.logger = QPlainTextEdit()
-        self.logger.setReadOnly(True)
-        layoutLeftContainer.addWidget(self.logger)
+        layoutLeftContainer.addWidget(self.log)
 
-        # note taking block - misses ADD and CLEAR note
-        self.note = QTextEdit()
-        self.note.setUndoRedoEnabled(False)
-        self.note.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.note.setFixedHeight(self.note.fontMetrics().lineSpacing() * 4)
-        self.note.setFixedWidth(235) # TODO automate this to become the minimum
-        self.note.insertPlainText('note #1 \n')
-
+        # layouts
         layoutRightContainer = QVBoxLayout()
         layoutRightContainer.addWidget(self.note)
         layoutRightContainer.addWidget(self.groupPinChoice)
@@ -86,7 +83,31 @@ class NoiserWindow(QMainWindow):
         container.setLayout(layoutMainContainer)
         self.setCentralWidget(container)
 
-        self.log('Everything is ready to go!')
+        #self.log.i(self.log.MSG['ENVIRONMENT_OK'])
+
+    def createNoter(self):
+        # note taking block - misses ADD and CLEAR note
+        self.note = QTextEdit()
+        self.note.setFixedHeight(self.note.fontMetrics().lineSpacing() * 4) # 4 lines of text
+        self.note.setFixedWidth(self.note.fontMetrics().width('W') * 18)    # 18 characters long
+        self.note.insertPlainText('note #1 \n')
+
+    class Logger(QPlainTextEdit):
+        """Logger class to """
+
+        def __init__(self, parent=None):
+            """Initializes the Logger class"""
+
+            super(NoiserGUI.Logger, self).__init__(parent)
+            self.setReadOnly(True)
+            self.MSG = json.load('./configs/logger.json')
+
+
+        def i(self, message):
+            """Logs 'info' messages"""
+
+            logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message
+            self.appendPlainText(logMessage)
 
 
     # TODO
@@ -94,7 +115,7 @@ class NoiserWindow(QMainWindow):
         pass
 
 
-    def _createToolBars(self, path = './configs/toolbars.json'):
+    def _createToolBars(self, path='./configs/toolbars.json'):
         """Creates the toolbars in a smart way"""
 
         with open(path, 'r') as toolbarsFile:

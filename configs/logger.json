@@ -1,13 +1,11 @@
 {
-    "emojis" : {
-        "info" : "",
-        "error" : "❗️",
-        "record" : "🟢",
-        "stop" : "🟥"
-    },
-    "messages" : {
-        "INFO_START" : "The environment set up!",
-        "INFO_READ" : "Start reading now...",
-        "INFO_EXIT" : "Goodbye!"
-    }
+    "ENVIRONMENT_OK": "The environment is set and ready to go",
+    "ENVIRONMENT_EXIT": "Goodbye!",
+    "CONNECTION_OK": "Connection established: Arduino says hi!",
+    "CONNECTION_NOT_OK": "404: board not found",
+    "READING_START": "Reading... 🟢",
+    "READING_STOP": "Stopped reading 🟥",
+    "DATA_SAVE": "Saving the precious data...",
+    "DATA_LOAD": "Loading the precious data...",
+    "EASTER_EGG": "HTTP 418: I'm a teapot 🫖"
 }

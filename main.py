@@ -1,12 +1,12 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from gui import NoiserWindow
+from gui import NoiserGUI
 
 def main():
     """Runs the Noisr singleton instance"""
 
     App     = QApplication(sys.argv)
-    Noiser  = NoiserWindow()
+    Noiser  = NoiserGUI()
     Noiser.show()
 
     sys.exit(App.exec_())
