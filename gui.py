@@ -34,8 +34,7 @@ class NoiserWindow(QMainWindow):
         self.setWindowIcon(QIcon('./data/icons/avicon.svg'))
         self.resize(QSize(
             self.configs['main_window']['dimen_width'],
-            self.configs['main_window']['dimen_height'])
-            )
+            self.configs['main_window']['dimen_height']))
 
         # create basic interface
         self._createMenuBar()
@@ -54,7 +53,6 @@ class NoiserWindow(QMainWindow):
         # logger
         self.logger = QPlainTextEdit()
         self.logger.setReadOnly(True)
-        #self.logger.setFixedHeight(self.logger.fontMetrics().lineSpacing() * 8)
         layoutLeftContainer.addWidget(self.logger)
 
         # note taking block - misses ADD and CLEAR note
@@ -92,138 +90,88 @@ class NoiserWindow(QMainWindow):
 
     # TODO improve this programatically
     def _createToolBars(self):
-        self._toolBarInstance()
-        self._toolbarConnection()
-        self._toolbarWorkspace()
-        self._toolbarParameters()
-        self._toolbarNumerics()
+        self._createToolbar('file')
+        self._createToolbar('connection')
+        self._createToolbar('workspace')
+        self._createToolbar('parameters')
+        self._createToolbar('numerics')
 
-    def _toolBarInstance(self):
-        # Toolbar instance
-        #toolbarTest = QToolBar('')
+    def onClick(self):
+        print("test")
 
-        toolbarFile = QToolBar('Instance management toolbar')
-        toolbarFile.setIconSize(QSize(24, 24))
-        toolbarFile.setMovable(False)
-        self.addToolBar(toolbarFile)
+    def _createToolbar(self, name, path='./configs/widgets.json'):
+        """Wizard code to deal with toolbars simplier"""
 
-        # new instance
-        btNewInstance = QAction(QIcon('./data/res/new.svg'), 'New', self)
-        btNewInstance.setStatusTip('Creates new .IAD instance')
-        toolbarFile.addAction(btNewInstance)
+        toolbarInstance = QToolBar(name)
+        toolbarInstance.setIconSize(QSize(
+            self.configs['toolbars']['icon_size'],
+            self.configs['toolbars']['icon_size']))
 
-        # save instance
-        btSaveInstance = QAction(QIcon('./data/res/instance_save.svg'), 'Save', self)
-        btSaveInstance.setStatusTip("Saves current instance to a .IAD file")
-        toolbarFile.addAction(btSaveInstance)
+        with open(path, 'r') as widgets:
+            widgetsAll = json.load(widgets)
+            toolWidgets = widgetsAll['toolbars'][name]['actions']
+            settings = widgetsAll['toolbars'][name]['settings']
 
-        # load instance
-        btLoadInstance = QAction(QIcon('./data/res/instance_load.svg'), 'Load', self)
-        btLoadInstance.setStatusTip("Loads new instance from a .IAD file")
-        #button_action.triggered.connect(self.onMyToolBarButtonClick)
-        toolbarFile.addAction(btLoadInstance)
+            # TODO create util function from this
+            movable     = settings.get('movable', 'True').lower() == 'true'
+            floatable   = settings.get('floatable', 'True').lower() == 'true'
+            position    = settings.get('position', 'top')
 
-        toolbarFile.addSeparator()
+            TOOLBAR_AREAS = {
+                'top' : Qt.TopToolBarArea,
+                'left' : Qt.LeftToolBarArea,
+                'bottom' : Qt.LeftToolBarArea,
+                'right' : Qt.RightToolBarArea
+                }
+            position = settings.get('position', 'top')
 
-        # load instance
-        btSaveDataCSV = QAction(QIcon('./data/res/save_data_csv.svg'), 'Save data CSV', self)
-        btSaveDataCSV.setStatusTip("Saves data into a .csv file")
-        toolbarFile.addAction(btSaveDataCSV)
+            toolbarInstance.setMovable(movable)
+            toolbarInstance.setFloatable(floatable)
+            self.addToolBar(TOOLBAR_AREAS[position], toolbarInstance)
 
-        # load instance
-        btSaveDataTXT = QAction(QIcon('./data/res/save_data_txt.svg'), 'Save data TXT', self)
-        btSaveDataTXT.setStatusTip("Saves data into a .txt file")
-        toolbarFile.addAction(btSaveDataTXT)
+            # TODO create an exception
+            for action in toolWidgets:
+                if action['type'] == 'button':
+                    btAction = QAction(QIcon(action['icon']), action['name'], self)
+                    btAction.setStatusTip(action['status'])
+                    btAction.triggered.connect(getattr(self, action['action']))
+                    toolbarInstance.addAction(btAction)
+                elif action['type'] == 'separator':
+                    toolbarInstance.addSeparator()
+                elif action['type'] == 'label':
+                    toolbarInstance.addWidget(QLabel(action['text']))
+                elif action['type'] == 'combobox':
+                    comboBoxPorts = QComboBox()
+                    itemsFunction = getattr(self, action['action'])
+                    items = itemsFunction()
+                    comboBoxPorts.addItems(items)
+                    toolbarInstance.addWidget(comboBoxPorts)
+                elif action['type'] == 'spinbox':
+                    toolbarInstance.addWidget(QSpinBox())
+                elif action['type'] == 'lineEdit':
+                    editLine = QLineEdit()
+                    editLine.setFixedWidth(int(action['width']))
+                    editValidator = getattr(self, action['validator']) # TODO validator not working
+                    editLine.setValidator(editValidator())
+                    toolbarInstance.addWidget(editLine)
+                elif action['type'] == 'break':
+                    self.insertToolBarBreak(toolbarInstance)
 
-    def _toolbarConnection(self):
-        """Settings about connection with the board"""
-        
-        toolbarConnectionSettings = QToolBar('Connection settings with Arduino')
-        toolbarConnectionSettings.setIconSize(QSize(24, 24))
-        self.addToolBar(toolbarConnectionSettings)
+    def thresholdValidator(self):
+        validator = QIntValidator()
+        validator.setRange(-25, 25)
+        return validator
 
-        # info board instance
-        btInfoBoard = QAction(QIcon('./data/res/info_board.svg'), 'Info board', self)
-        btInfoBoard.setStatusTip("Provides info about the connected board")
-        toolbarConnectionSettings.addAction(btInfoBoard)        
-
-        # list comprehension to extract all files starting with "ttyACM" at /dev
+    def getPorts(self):
         ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
-        comboBoxPorts = QComboBox()
-        comboBoxPorts.addItems(ports if ports else ['no board'])
-        toolbarConnectionSettings.addWidget(comboBoxPorts)
-
-        toolbarConnectionSettings.addWidget(QLabel('rate:'))
-        toolbarConnectionSettings.addWidget(QSpinBox())
-
-
-    def _toolbarWorkspace(self):
-        toolbarWorkspace = QToolBar('Workstation objects')
-        toolbarWorkspace.setIconSize(QSize(24, 24))
-        self.addToolBar(toolbarWorkspace)
-
-        # info board instance
-        btInfoBoard = QAction(QIcon('./data/res/notes.svg'), 'Notes taken for this instance', self)
-        btInfoBoard.setStatusTip('All notes taken at this .IAD instance')
-        toolbarWorkspace.addAction(btInfoBoard)
-
-    def _toolbarParameters(self):
-        """Parameters for working plot and data analysis"""
-
-        toolbarParameters = QToolBar('Parameters for data analyzer')
-        toolbarParameters.setIconSize(QSize(24, 24))
-        self.addToolBar(toolbarParameters)
-
-        self.insertToolBarBreak(toolbarParameters)
-
-        self.editThreshold = QLineEdit()
-        self.editThreshold.setFixedWidth(50)
-        #self.editThreshold.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        validateThreshold = QIntValidator()
-        validateThreshold.setRange(-25, 25)
-        self.editThreshold.setValidator(validateThreshold)
-        
-        comboThresholdUnits = QComboBox()
-        comboThresholdUnits.addItems(('V', 'mV'))
-
-        toolbarParameters.addWidget(QLabel('threshold:'))
-        toolbarParameters.addWidget(self.editThreshold)
-        toolbarParameters.addWidget(comboThresholdUnits)
-
-
-    def _toolbarNumerics(self):
-        """Numerical computations to real-time data analysis"""
-
-        toolbar = QToolBar('Numeric Methods')
-        toolbar.setIconSize(QSize(24, 24))
-        toolbar.setFloatable(True)
-        toolbar.setMovable(True)
-        toolbar.setOrientation(Qt.Vertical)
-
-        self.addToolBar(Qt.LeftToolBarArea, toolbar)
-
-        btMovingAverage = QAction(QIcon('./data/res/plot_mean.svg'), 'Notes taken for this instance', self)
-        btMaxMinVoltage = QAction(QIcon('./data/res/plot_peaktopeak.svg'), 'Notes taken for this instance', self)
-        btStdDeviation  = QAction(QIcon('./data/res/plot_measures.svg'), 'Notes taken for this instance', self)
-        btThreshold     = QAction(QIcon('./data/res/plot_tolerance.svg'), 'Notes taken for this instance', self)
-
-        btMovingAverage.setStatusTip('Moving average')
-        btMaxMinVoltage.setStatusTip('Maximum and minimum')
-        btStdDeviation.setStatusTip('Standard Deviation')
-        btThreshold.setStatusTip('Threshold voltage')
-
-        toolbar.addAction(btMovingAverage)
-        toolbar.addAction(btMaxMinVoltage)
-        toolbar.addAction(btStdDeviation)
-        toolbar.addAction(btThreshold)
-
+        return ports if ports else ['no board']
 
     def _createStatusBar(self):
         self.statusbar = self.statusBar()
         self.statusbar.setStyleSheet("background-color: rgb(0, 122, 204);")
-        self.statusbar.showMessage("Arduino Connected!", 3000)
+        self.statusbar.showMessage("Viva!", 3000)
 
-        self.labelFilename = QLabel('instance_name.iad')
+        self.labelFilename = QLabel('instance_name.iad') # TODO filename
         self.statusbar.addPermanentWidget(self.labelFilename)
 
 
@@ -348,6 +296,7 @@ class NoiserWindow(QMainWindow):
         ## plot numerical analysis options
         tabPlotContainer = QVBoxLayout()
         tabPlotContainer.setContentsMargins(5, 5, 5, 5)
+        #tabPlotContainer.setColor("background-color: rgb(0, 0, 0);")
         tabPlotContainer.addWidget(plot)
 
         # table
