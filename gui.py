@@ -22,10 +22,12 @@ from PyQt5.QtGui import (
 class NoiserWindow(QMainWindow):
     """Class for handling a GUI instance"""
 
+
     def __init__(self, parent = None):
         super(NoiserWindow, self).__init__(parent)
         self.setupEnvironment()
         self.initUI()
+
 
     def initUI(self):
         """Sets up the graphical user interface"""
@@ -84,89 +86,101 @@ class NoiserWindow(QMainWindow):
         container.setLayout(layoutMainContainer)
         self.setCentralWidget(container)
 
+        self.log('Everything is ready to go!')
+
+
     # TODO
     def _createMenuBar(self):
         pass
 
-    # TODO improve this programatically
-    def _createToolBars(self):
-        self._createToolbar('file')
-        self._createToolbar('connection')
-        self._createToolbar('workspace')
-        self._createToolbar('parameters')
-        self._createToolbar('numerics')
+
+    def _createToolBars(self, path = './configs/toolbars.json'):
+        """Creates the toolbars in a smart way"""
+
+        with open(path, 'r') as toolbarsFile:
+            toolbars = json.load(toolbarsFile)
+            for toolbarName in toolbars:
+                self._createToolbar(toolbars[toolbarName])
+
+
+    def _createToolbar(self, toolbar):
+        """Wizard code to deal with toolbars simplier - new way of doing!"""
+
+        toolbarInstance = QToolBar('test name')
+        toolbarInstance.setIconSize(QSize(
+            self.configs['toolbars']['icon_size'],
+            self.configs['toolbars']['icon_size'])
+            )
+
+        toolWidgets = toolbar['actions']
+        settings = toolbar['settings']
+
+        # TODO create util function from this
+        movable     = settings.get('movable', 'True').lower() == 'true'
+        floatable   = settings.get('floatable', 'True').lower() == 'true'
+        position    = settings.get('position', 'top')
+
+        TOOLBAR_AREAS = {
+            'top' : Qt.TopToolBarArea,
+            'left' : Qt.LeftToolBarArea,
+            'bottom' : Qt.LeftToolBarArea,
+            'right' : Qt.RightToolBarArea
+            }
+        position = settings.get('position', 'top')
+
+        toolbarInstance.setMovable(movable)
+        toolbarInstance.setFloatable(floatable)
+        self.addToolBar(TOOLBAR_AREAS[position], toolbarInstance)
+
+        # TODO create an exception
+        for action in toolWidgets:
+            if action['type'] == 'button':
+                btAction = QAction(QIcon(action['icon']), action['name'], self)
+                btAction.setStatusTip(action['status'])
+                btAction.triggered.connect(getattr(self, action['action']))
+                toolbarInstance.addAction(btAction)
+            elif action['type'] == 'separator':
+                toolbarInstance.addSeparator()
+            elif action['type'] == 'label':
+                toolbarInstance.addWidget(QLabel(action['text']))
+            elif action['type'] == 'combobox':
+                comboBoxPorts = QComboBox()
+                itemsFunction = getattr(self, action['action'])
+                items = itemsFunction()
+                comboBoxPorts.addItems(items)
+                toolbarInstance.addWidget(comboBoxPorts)
+            elif action['type'] == 'spinbox':
+                toolbarInstance.addWidget(QSpinBox())
+            elif action['type'] == 'lineEdit':
+                editLine = QLineEdit()
+                editLine.setFixedWidth(int(action['width']))
+                editValidator = getattr(self, action['validator']) # TODO validator not working
+                editLine.setValidator(editValidator())
+                toolbarInstance.addWidget(editLine)
+            elif action['type'] == 'break':
+                self.insertToolBarBreak(toolbarInstance)
+
 
     def onClick(self):
         print("test")
 
-    def _createToolbar(self, name, path='./configs/widgets.json'):
-        """Wizard code to deal with toolbars simplier"""
-
-        toolbarInstance = QToolBar(name)
-        toolbarInstance.setIconSize(QSize(
-            self.configs['toolbars']['icon_size'],
-            self.configs['toolbars']['icon_size']))
-
-        with open(path, 'r') as widgets:
-            widgetsAll = json.load(widgets)
-            toolWidgets = widgetsAll['toolbars'][name]['actions']
-            settings = widgetsAll['toolbars'][name]['settings']
-
-            # TODO create util function from this
-            movable     = settings.get('movable', 'True').lower() == 'true'
-            floatable   = settings.get('floatable', 'True').lower() == 'true'
-            position    = settings.get('position', 'top')
-
-            TOOLBAR_AREAS = {
-                'top' : Qt.TopToolBarArea,
-                'left' : Qt.LeftToolBarArea,
-                'bottom' : Qt.LeftToolBarArea,
-                'right' : Qt.RightToolBarArea
-                }
-            position = settings.get('position', 'top')
-
-            toolbarInstance.setMovable(movable)
-            toolbarInstance.setFloatable(floatable)
-            self.addToolBar(TOOLBAR_AREAS[position], toolbarInstance)
-
-            # TODO create an exception
-            for action in toolWidgets:
-                if action['type'] == 'button':
-                    btAction = QAction(QIcon(action['icon']), action['name'], self)
-                    btAction.setStatusTip(action['status'])
-                    btAction.triggered.connect(getattr(self, action['action']))
-                    toolbarInstance.addAction(btAction)
-                elif action['type'] == 'separator':
-                    toolbarInstance.addSeparator()
-                elif action['type'] == 'label':
-                    toolbarInstance.addWidget(QLabel(action['text']))
-                elif action['type'] == 'combobox':
-                    comboBoxPorts = QComboBox()
-                    itemsFunction = getattr(self, action['action'])
-                    items = itemsFunction()
-                    comboBoxPorts.addItems(items)
-                    toolbarInstance.addWidget(comboBoxPorts)
-                elif action['type'] == 'spinbox':
-                    toolbarInstance.addWidget(QSpinBox())
-                elif action['type'] == 'lineEdit':
-                    editLine = QLineEdit()
-                    editLine.setFixedWidth(int(action['width']))
-                    editValidator = getattr(self, action['validator']) # TODO validator not working
-                    editLine.setValidator(editValidator())
-                    toolbarInstance.addWidget(editLine)
-                elif action['type'] == 'break':
-                    self.insertToolBarBreak(toolbarInstance)
 
     def thresholdValidator(self):
         validator = QIntValidator()
         validator.setRange(-25, 25)
         return validator
 
+
     def getPorts(self):
+        """Shows the ports whose connection is made with Arduino (LINUX ONLY!!)"""
+
         ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
         return ports if ports else ['no board']
 
+
     def _createStatusBar(self):
+        """Creates status bar"""
+
         self.statusbar = self.statusBar()
         self.statusbar.setStyleSheet("background-color: rgb(0, 122, 204);")
         self.statusbar.showMessage("Viva!", 3000)
@@ -306,7 +320,7 @@ class NoiserWindow(QMainWindow):
         tableWidget.horizontalHeader().setStretchLastSection(True)
 
         tab1hbox = QHBoxLayout()
-        #tab1hbox.setContentsMargins(5, 5, 5, 5)
+        tab1hbox.setContentsMargins(5, 5, 5, 5)
         tab1hbox.addWidget(tableWidget)
 
         tabTable.setLayout(tab1hbox)
@@ -317,27 +331,31 @@ class NoiserWindow(QMainWindow):
         self.tabPlotter.addTab(tabSimple, "Plot")
         self.tabPlotter.addTab(tabTable, "Table")
 
+
     def startReadingData(self):
         """Change program mode to start reading data"""
+
         self.isReading = True
         self.setWindowTitle(self.title + ' (🟢 reading...)')
         
         self.log('Started reading...', 'record')
-        
+
+
     def stopReadingData(self):
         """Change program mode to stop reading data"""
 
         self.isReading = False
         self.setWindowTitle(self.title)
 
-        self.log('Stopped reading.', 'stop')
+        self.log('Stopped reading.')
 
 
     def log(self, message, type='info'):
-        """Writes the string @message to the logger - sometimes with an emoji"""
+        """Writes the string @message to the logger - sometimes with an emoji :)"""
 
-        logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message + '\t' + self.emoji_dict[type]
+        logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message# + '\t' + self.configs.emojis[type]
         self.logger.appendPlainText(logMessage)
+
 
     # TODO missing args from the caller
     def setupEnvironment(self, configsPath='./configs/settings.json'):

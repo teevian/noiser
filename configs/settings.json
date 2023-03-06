@@ -15,10 +15,9 @@
         "dimen_width" : 1000,
         "dimen_height" : 800
     },
-    "emojis_dict" : {
-        "info" : "",
-        "error" : "❗️",
-        "record" : "🟢",
-        "stop" : "🟥"
+    "env_paths" : {
+        "toolbars" : "./configs/toolbars.json",
+        "logger" : "./configs/logger.json",
+        "icons" : "./data/icons/"
     }
 }

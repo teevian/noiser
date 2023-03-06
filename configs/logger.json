@@ -1,0 +1,13 @@
+{
+    "emojis" : {
+        "info" : "",
+        "error" : "❗️",
+        "record" : "🟢",
+        "stop" : "🟥"
+    },
+    "messages" : {
+        "INFO_START" : "The environment set up!",
+        "INFO_READ" : "Start reading now...",
+        "INFO_EXIT" : "Goodbye!"
+    }
+}
