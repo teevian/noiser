@@ -2,7 +2,7 @@
 
 import json, time, os
 import pyqtgraph as pg
-
+from msgid import _
 from PyQt5.QtCore import (
         QSize, Qt, pyqtSlot
         )
@@ -19,96 +19,110 @@ from PyQt5.QtGui import (
         QIcon, QIntValidator
         )
 
-class NoiserGUI(QMainWindow):
-    """Class for handling a GUI instance"""
 
+class NoiserGUI(QMainWindow):
+    """
+        Implements the main window for a Noisr instance
+    """
 
     def __init__(self, parent = None):
-        """Initializes the program"""
-
         super(NoiserGUI, self).__init__(parent)
-        self.setupEnvironment()
-        self.initUI()
+        configs = self.setupEnvironment()
+        self.initUI(configs)
 
+    def initUI(self, configs):
+        """
+            Sets up the layout and user interface
+        """
 
-    def initUI(self):
-        """Sets up the layout and user interface"""
-
-        window = self.configs['main_window']
+        ## window setup
+        window = configs['main_window']
 
         self.setWindowTitle(window['title'])
         self.setWindowIcon(QIcon(window['icon']))
         self.resize(QSize(window['width'], window['height']))
 
-        # create menus
+        ## global interface variables
+        self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
+        self.filename = 'instance_name.iad'
+        self.notes = {}
+
+        ## create menus
         self._createMenuBar()
         self._createToolBars()
         self._createStatusBar()
 
-        # create widgets
+        ## create widgets
         self.log = NoiserGUI.Logger()
 
         self.createAnalyzer()
         self.createNoter()
         self.createGroupAnalogPinChoice()
-        self.createGroupControllers()
+        self.createGroupSchedule()
+        self.createControllers()
 
-        # plotter
-        layoutLeftContainer = QVBoxLayout()
-        layoutLeftContainer.addWidget(self.tabPlotter, alignment = Qt.AlignTop)
-        layoutLeftContainer.addStretch()
+        ## left board - data analyzer
+        containerLeft = QVBoxLayout()
+        containerLeft.addStretch()
+        containerLeft.addWidget(self.tabAnalyzerBoard, alignment = Qt.AlignTop)
+        containerLeft.addStretch()
+        containerLeft.addWidget(self.log)
 
-        # logger
-        layoutLeftContainer.addWidget(self.log)
+        ## right board - data handler
+        containerRight = QVBoxLayout()
+        containerRight.addWidget(self.tabNoter )
+        containerRight.addWidget(self.groupPinChoice)
+        containerRight.addWidget(self.groupSchedule)
+        containerRight.addLayout(self.layoutControllers)
+        containerRight.addStretch()
 
-        # layouts
-        layoutRightContainer = QVBoxLayout()
-        layoutRightContainer.addWidget(self.note)
-        layoutRightContainer.addWidget(self.groupPinChoice)
-        layoutRightContainer.addWidget(self.groupControllers)
-        
-        layout = QHBoxLayout()
-        layout.addWidget(self.btPlayPause)
-        layout.addWidget(self.btRegister)
+        ## main container - disposes into two columns
+        containerMain = QHBoxLayout()
+        containerMain.addLayout(containerLeft)
+        containerMain.addLayout(containerRight)
 
-        layoutRightContainer.addLayout(layout)
-        layoutRightContainer.addStretch()
+        ## pasting layout into QWidget
+        NoisrWidget = QWidget()
+        NoisrWidget.setLayout(containerMain)
+        self.setCentralWidget(NoisrWidget)
 
-        # main container that disposes the widgets into two columns
-        layoutMainContainer = QHBoxLayout()
-        layoutMainContainer.addLayout(layoutLeftContainer)
-        layoutMainContainer.addLayout(layoutRightContainer)
-
-        container = QWidget()
-        container.setLayout(layoutMainContainer)
-        self.setCentralWidget(container)
-
-        #self.log.i(self.log.MSG['ENVIRONMENT_OK'])
-
-    def createNoter(self):
-        # note taking block - misses ADD and CLEAR note
-        self.note = QTextEdit()
-        self.note.setFixedHeight(self.note.fontMetrics().lineSpacing() * 4) # 4 lines of text
-        self.note.setFixedWidth(self.note.fontMetrics().width('W') * 18)    # 18 characters long
-        self.note.insertPlainText('note #1 \n')
+        self.log.i(_('ENV_OK'))
 
     class Logger(QPlainTextEdit):
-        """Logger class to """
+        """
+            NoiserGUI.Logger class to communicate with user
+        """
 
         def __init__(self, parent=None):
-            """Initializes the Logger class"""
-
             super(NoiserGUI.Logger, self).__init__(parent)
             self.setReadOnly(True)
-            self.MSG = json.load('./configs/logger.json')
 
-
-        def i(self, message):
-            """Logs 'info' messages"""
-
+        def i(self, message):   # logs info messages
+            logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message
+            self.appendPlainText(logMessage)
+        
+        def e(self, message, exception):   # logs error messages
             logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message
             self.appendPlainText(logMessage)
 
+
+    def createNoter(self):
+        """
+            Creates a noter input text
+        """
+
+        self.tabNoter = QTabWidget()
+        self.tabNoter.setTabBarAutoHide(True)
+        #self.tabNoter.setUsesScrollButtons(True)
+        self.tabNoter.setTabsClosable(True) # TODO to implement!
+        self.tabNoter.setStyleSheet('QTabWidget::pane { border: 0; }')
+
+        for i in range(3):
+            note = QTextEdit()
+            self.tabNoter.setFixedHeight(note.fontMetrics().lineSpacing() * 8 )
+            self.tabNoter.setFixedWidth(note.fontMetrics().width('W') * 18 )
+            note.setPlainText(f'note {i+1}')
+            self.tabNoter.addTab(note, f'{i+1}')
 
     # TODO
     def _createMenuBar(self):
@@ -116,70 +130,70 @@ class NoiserGUI(QMainWindow):
 
 
     def _createToolBars(self, path='./configs/toolbars.json'):
-        """Creates the toolbars in a smart way"""
+        """
+            Creates the toolbars in a smarter way
+        """
 
-        with open(path, 'r') as toolbarsFile:
-            toolbars = json.load(toolbarsFile)
-            for toolbarName in toolbars:
-                self._createToolbar(toolbars[toolbarName])
+        with open(path, 'r') as toolbars_file:
+            toolbars = json.load(toolbars_file)
+            for toolbar_name in toolbars:
+                self._createToolbar(toolbars[toolbar_name], toolbar_name)
 
+    def _createToolbar(self, toolbar, name):
+        """
+            Wizard code to deal with toolbars - new way of doing!
+        """
 
-    def _createToolbar(self, toolbar):
-        """Wizard code to deal with toolbars simplier - new way of doing!"""
+        ## sets up this @toolbar instance
+        toolbar_instance = QToolBar(name)
+        toolbar_instance.setIconSize(self.ICON_SIZE)
 
-        toolbarInstance = QToolBar('test name')
-        toolbarInstance.setIconSize(QSize(
-            self.configs['toolbars']['icon_size'],
-            self.configs['toolbars']['icon_size'])
-            )
-
-        toolWidgets = toolbar['actions']
+        actions = toolbar['actions']
         settings = toolbar['settings']
 
-        # TODO create util function from this
+        ## set up geometry settings into code
         movable     = settings.get('movable', 'True').lower() == 'true'
         floatable   = settings.get('floatable', 'True').lower() == 'true'
         position    = settings.get('position', 'top')
 
-        TOOLBAR_AREAS = {
+        toolbar_instance.setMovable(movable)
+        toolbar_instance.setFloatable(floatable)
+        self.addToolBar({
             'top' : Qt.TopToolBarArea,
             'left' : Qt.LeftToolBarArea,
-            'bottom' : Qt.LeftToolBarArea,
+            'bottom' : Qt.BottomToolBarArea,
             'right' : Qt.RightToolBarArea
-            }
-        position = settings.get('position', 'top')
+            }[position],
+            toolbar_instance)
 
-        toolbarInstance.setMovable(movable)
-        toolbarInstance.setFloatable(floatable)
-        self.addToolBar(TOOLBAR_AREAS[position], toolbarInstance)
-
-        # TODO create an exception
-        for action in toolWidgets:
+        # TODO create an exception AND IMPROVE THIS
+        ## toolbar factory from lambda dictionary
+        for action in actions:
             if action['type'] == 'button':
                 btAction = QAction(QIcon(action['icon']), action['name'], self)
                 btAction.setStatusTip(action['status'])
                 btAction.triggered.connect(getattr(self, action['action']))
-                toolbarInstance.addAction(btAction)
+                toolbar_instance.addAction(btAction)
             elif action['type'] == 'separator':
-                toolbarInstance.addSeparator()
+                toolbar_instance.addSeparator()
             elif action['type'] == 'label':
-                toolbarInstance.addWidget(QLabel(action['text']))
+                toolbar_instance.addWidget(QLabel(action['text']))
             elif action['type'] == 'combobox':
                 comboBoxPorts = QComboBox()
                 itemsFunction = getattr(self, action['action'])
                 items = itemsFunction()
                 comboBoxPorts.addItems(items)
-                toolbarInstance.addWidget(comboBoxPorts)
+                toolbar_instance.addWidget(comboBoxPorts)
             elif action['type'] == 'spinbox':
-                toolbarInstance.addWidget(QSpinBox())
+                toolbar_instance.addWidget(QSpinBox())
             elif action['type'] == 'lineEdit':
                 editLine = QLineEdit()
                 editLine.setFixedWidth(int(action['width']))
                 editValidator = getattr(self, action['validator']) # TODO validator not working
                 editLine.setValidator(editValidator())
-                toolbarInstance.addWidget(editLine)
+                toolbar_instance.addWidget(editLine)
             elif action['type'] == 'break':
-                self.insertToolBarBreak(toolbarInstance)
+                self.insertToolBarBreak(toolbar_instance)
 
 
     def onClick(self):
@@ -193,21 +207,26 @@ class NoiserGUI(QMainWindow):
 
 
     def getPorts(self):
-        """Shows the ports whose connection is made with Arduino (LINUX ONLY!!)"""
+        """
+            Shows ports whose connection is made with Arduino - LINUX COMPATIBLE
+        """
 
         ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
         return ports if ports else ['no board']
 
 
-    def _createStatusBar(self):
-        """Creates status bar"""
+    def _createStatusBar(self, background_color='background-color: rgb(0, 122, 204);'):
+        """
+            Creates status bar
+        """
 
+        ## status bar with greeting
         self.statusbar = self.statusBar()
-        self.statusbar.setStyleSheet("background-color: rgb(0, 122, 204);")
-        self.statusbar.showMessage("Viva!", 3000)
+        self.statusbar.setStyleSheet(background_color)
+        self.statusbar.showMessage(_('LUIS_MELO_GREETING'), 3000)
 
-        self.labelFilename = QLabel('instance_name.iad') # TODO filename
-        self.statusbar.addPermanentWidget(self.labelFilename)
+        self.label_filename = QLabel(self.filename) # TODO filename
+        self.statusbar.addPermanentWidget(self.label_filename)
 
 
     def btPlayPauseClicked(self):
@@ -221,9 +240,9 @@ class NoiserGUI(QMainWindow):
     
     def btPlayPauseOnToggled(self, pushed):
         if pushed:
-            self.btPlayPause.setIcon(QIcon('./data/res/warning.svg'))
+            self.btPlayPause.setIcon(QIcon('./data/icons/warning.svg'))
         else:
-            self.btPlayPause.setIcon(QIcon('./data/res/target.svg'))
+            self.btPlayPause.setIcon(QIcon('./data/icons/target.svg'))
     
 
     # TODO APPLY TO A TOGGLE
@@ -248,10 +267,11 @@ class NoiserGUI(QMainWindow):
         self.bt_plot.setEnabled(False)
 
 
-    """
-        Creates the group for radio pins
-    """
     def createGroupAnalogPinChoice(self):
+        """
+            Creates the group for radio pins
+        """
+
         layoutGridPins = QGridLayout()
         self.groupPinChoice = QGroupBox('Analog PIN')
 
@@ -266,8 +286,11 @@ class NoiserGUI(QMainWindow):
         self.groupPinChoice.setLayout(layoutGridPins)
 
 
-    def createGroupControllers(self):
-        # time box (parses input)
+    def createGroupSchedule(self):
+        """
+            Allows to schedule the measuring time
+        """
+
         editTime = QLineEdit()
         editTime.setFixedWidth(50)
         validateTime = QIntValidator()
@@ -296,65 +319,77 @@ class NoiserGUI(QMainWindow):
 
         layoutVContainer.addStretch()
 
-        self.groupControllers = QGroupBox('Schedule')
-        self.groupControllers.setCheckable(True)
-        self.groupControllers.setChecked(False)
-        self.groupControllers.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.groupSchedule = QGroupBox('Schedule')
+        self.groupSchedule.setCheckable(True)
+        self.groupSchedule.setChecked(False)
+        self.groupSchedule.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        self.btPlayPause = QPushButton(QIcon('./data/res/target.svg'), '')
-        self.btPlayPause.setIconSize(QSize(24, 24))
+        self.btPlayPause = QPushButton(QIcon('./data/icons/target.svg'), '')
+        self.btPlayPause.setIconSize(self.ICON_SIZE)
         self.btPlayPause.setCheckable(True)
         self.btPlayPause.toggled.connect(self.btPlayPauseOnToggled)
 
-        self.btRegister = QPushButton(QIcon('./data/res/save_data.svg'), '')
-        self.btRegister.setIconSize(QSize(24, 24))
+        self.btRegister = QPushButton(QIcon('./data/icons/save_data.svg'), '')
+        self.btRegister.setIconSize(self.ICON_SIZE)
         self.btRegister.setCheckable(True)
         self.btRegister.toggled.connect(self.btPlayPauseOnToggled)
 
-        self.groupControllers.setLayout(layoutVContainer)
+        self.groupSchedule.setLayout(layoutVContainer)
 
+    def createControllers(self):
+        # TODO use grid layout
+        self.layoutControllers = QHBoxLayout()
+        self.layoutControllers.addWidget(self.btPlayPause)
+        self.layoutControllers.addWidget(self.btRegister)
 
     def createAnalyzer(self):
-        """Generates the Tab screen from which the user will analyze data"""
+        """
+            Generates the Tab screen board from which data can be analyzed
+        """
 
-        self.tabPlotter = QTabWidget()
-        self.tabPlotter.setSizePolicy(
-            QSizePolicy.MinimumExpanding,
-            QSizePolicy.MinimumExpanding
-            )
+        ## tab container and style
+        self.tabAnalyzerBoard = QTabWidget()
+        self.tabAnalyzerBoard.setMovable(True)
+        self.tabAnalyzerBoard.setTabPosition(QTabWidget.South)
+        self.tabAnalyzerBoard.setTabShape(QTabWidget.Triangular)
+        self.tabAnalyzerBoard.setStyleSheet("QTabWidget::pane { border: 0; }")
 
-        # plot
+        ## plot
         plot = pg.PlotWidget()
-        plot.plot(range(0, 20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7])
-        plot.setAspectLocked(lock=True, ratio=1)
+        x, y = range(0, 20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7]
+        plot.plot(x, y)
+        plot.setAspectLocked(lock = True, ratio = 1)
 
-        ## plot numerical analysis options
-        tabPlotContainer = QVBoxLayout()
-        tabPlotContainer.setContentsMargins(5, 5, 5, 5)
-        #tabPlotContainer.setColor("background-color: rgb(0, 0, 0);")
-        tabPlotContainer.addWidget(plot)
+        # plot tab container
+        tabPlot = QWidget()
+        layoutTabPlot = QHBoxLayout(tabPlot)
+        layoutTabPlot.setContentsMargins(0, 0, 0, 0)
+        tabPlot.setLayout(layoutTabPlot)
+        layoutTabPlot.addWidget(plot)
 
-        # table
+        ## table
+        table = QTableWidget(20, 4)
+        table.setStyleSheet('background-color: rgb(0, 0, 0);')
+        table.horizontalHeader().setStretchLastSection(True)
+
+        # table tab container
         tabTable = QWidget()
-        tableWidget = QTableWidget(5, 4)
-        tableWidget.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'PWM', ''])
-        tableWidget.horizontalHeader().setStretchLastSection(True)
+        layoutTabTable = QVBoxLayout(tabTable)
+        layoutTabTable.setContentsMargins(0, 0, 0, 0)
+        tabTable.setLayout(layoutTabTable)
+        layoutTabTable.addWidget(table)
 
-        tab1hbox = QHBoxLayout()
-        tab1hbox.setContentsMargins(5, 5, 5, 5)
-        tab1hbox.addWidget(tableWidget)
+        self.tabAnalyzerBoard.addTab(tabPlot, QIcon('./data/icons/ic_read.svg'), 'Plot')
+        self.tabAnalyzerBoard.addTab(tabTable, QIcon('./data/icons/ic_sum'), 'Table')
 
-        tabTable.setLayout(tab1hbox)
-
-        tabSimple = QWidget()
-        tabSimple.setLayout(tabPlotContainer)
-
-        self.tabPlotter.addTab(tabSimple, "Plot")
-        self.tabPlotter.addTab(tabTable, "Table")
+        table.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'note'])
+        table.verticalHeader().setVisible(False)
 
 
-    def startReadingData(self):
-        """Change program mode to start reading data"""
+    def startReading(self):
+        """
+            Change program mode to start reading data
+        """
 
         self.isReading = True
         self.setWindowTitle(self.title + ' (🟢 reading...)')
@@ -362,25 +397,21 @@ class NoiserGUI(QMainWindow):
         self.log('Started reading...', 'record')
 
 
-    def stopReadingData(self):
-        """Change program mode to stop reading data"""
+    def stopReading(self):
+        """
+            Change program mode to stop reading data
+        """
 
         self.isReading = False
         self.setWindowTitle(self.title)
 
         self.log('Stopped reading.')
 
-
-    def log(self, message, type='info'):
-        """Writes the string @message to the logger - sometimes with an emoji :)"""
-
-        logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message# + '\t' + self.configs.emojis[type]
-        self.logger.appendPlainText(logMessage)
-
-
     # TODO missing args from the caller
     def setupEnvironment(self, configsPath='./configs/settings.json'):
-        """Sets up the global environment according to the .configs.json file"""
+        """
+            Sets up the global environment according to the configs.json file
+        """
 
-        with open(configsPath, 'r') as file_configs:
-            self.configs = json.load(file_configs)
+        with open(configsPath, 'r') as configsDefault:
+            return json.load(configsDefault)

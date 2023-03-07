@@ -9,21 +9,21 @@
             {
                 "type": "button",
                 "name": "New File",
-                "icon": "./data/res/new.svg",
+                "icon": "./data/icons/new.svg",
                 "status": "Creates new .IAD instance",
                 "action": "onClick"
             },
             {
                 "type": "button",
                 "name": "Save File",
-                "icon": "./data/res/instance_save.svg",
+                "icon": "./data/icons/instance_save.svg",
                 "status": "Save this .IAD instance",
                 "action": "onClick"
             },
             {
                 "type": "button",
                 "name": "Load File",
-                "icon": "./data/res/instance_load.svg",
+                "icon": "./data/icons/instance_load.svg",
                 "status": "Loads a .IAD instance",
                 "action": "onClick"
             },
@@ -33,21 +33,14 @@
             {
                 "type": "button",
                 "name": "Save Data CSV",
-                "icon": "./data/res/save_data_csv.svg",
+                "icon": "./data/icons/save_data_csv.svg",
                 "status": "Saves data into a .CSV file",
                 "action": "onClick"
             },
             {
                 "type": "button",
                 "name": "Save Data TXT",
-                "icon": "./data/res/save_data_txt.svg",
-                "status": "Saves data into a .TXT file",
-                "action": "onClick"
-            },
-            {
-                "type": "button",
-                "name": "Save Data TXT",
-                "icon": "./data/icons/new.svg",
+                "icon": "./data/icons/save_data_txt.svg",
                 "status": "Saves data into a .TXT file",
                 "action": "onClick"
             }
@@ -63,9 +56,16 @@
             {
                 "type": "button",
                 "name": "Board Info",
-                "icon": "./data/res/info_board.svg",
-                "status": "Provides info about the connected board",
+                "icon": "./data/icons/info_board.svg",
+                "status": "Info about the board",
                 "action": "onClick"
+            },
+            {
+                "type": "button",
+                "name": "Connection Info",
+                "icon": "./data/icons/ic_info_connection.svg",
+                "status": "Info about the connection",
+                "action": "onClick"                
             },
             {
                 "type": "combobox",
@@ -79,6 +79,13 @@
             },
             {
                 "type": "spinbox"
+            },
+            {
+                "type": "button",
+                "name": "Board Code",
+                "icon": "./data/icons/ic_code.svg",
+                "status": "Arduino code",
+                "action": "onClick"
             }
         ]
     },
@@ -92,7 +99,7 @@
             {
                 "type": "button",
                 "name": "All notes",
-                "icon": "./data/res/notes.svg",
+                "icon": "./data/icons/notes.svg",
                 "status": "All notes taken for this .IAD instance",
                 "action": "onClick"
             }
@@ -100,14 +107,12 @@
     },
     "parameters": {
         "settings": {
-            "position": "top",
+            "position": "bottom",
             "movable" : "True",
             "floatable" : "true"
         },
         "actions": [
-            {
-                "type": "break"
-            },
+
             {
                 "type": "label",
                 "text": "threshold (V):"
@@ -129,28 +134,28 @@
             {
                 "type": "button",
                 "name": "Moving Average",
-                "icon": "./data/res/plot_mean.svg",
+                "icon": "./data/icons/plot_mean.svg",
                 "status": "Shows moving average for the signal",
                 "action": "onClick"
             },
             {
                 "type": "button",
                 "name": "Maxima and Minima",
-                "icon": "./data/res/plot_peaktopeak.svg",
+                "icon": "./data/icons/plot_peaktopeak.svg",
                 "status": "Shows maxima and minima for the signal",
                 "action": "onClick"
             },
             {
                 "type": "button",
                 "name": "Measures",
-                "icon": "./data/res/plot_measures.svg",
+                "icon": "./data/icons/plot_measures.svg",
                 "status": "Shows maximum and minimum for the signal",
                 "action": "onClick"
             },
             {
                 "type": "button",
                 "name": "Threshold",
-                "icon": "./data/res/plot_tolerance.svg",
+                "icon": "./data/icons/plot_tolerance.svg",
                 "status": "Shows threshold for the signal",
                 "action": "onClick"
             }

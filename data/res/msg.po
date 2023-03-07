@@ -1,0 +1,52 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Noisr 1.0\n"
+"Report-Msgid-Bugs-To: telmo.vaz@tecnico.ulisboa.pt\n"
+"POT-Creation-Date: 2022-03-06 14:00-0800\n"
+"PO-Revision-Date: 2022-03-06 14:00-0800\n"
+"Last-Translator: Telmo Vaz <telmo.vaz@tecnico.ulisboa.pt>\n"
+"Language-Team: English\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: mainwindow.py:20
+msgid "ENV_OK"
+msgstr "The environment is set up!"
+
+#: mainwindow.py:21
+msgid "Open"
+msgstr "Open"
+
+#: mainwindow.py:22
+msgid "Save"
+msgstr "Save"
+
+#: mainwindow.py:23
+msgid "Quit"
+msgstr "Quit"
+
+#: mainwindow.py:30
+msgid "Edit"
+msgstr "Edit"
+
+#: mainwindow.py:31
+msgid "Cut"
+msgstr "Cut"
+
+#: mainwindow.py:32
+msgid "Copy"
+msgstr "Copy"
+
+#: mainwindow.py:33
+msgid "Paste"
+msgstr "Paste"
+
+#: mainwindow.py:40
+msgid "Help"
+msgstr "Help"
+
+#: mainwindow.py:41
+msgid "About"
+msgstr "About"

@@ -7,14 +7,12 @@
     "settings" : {
         "startup_performance" : "high"
     },
-    "toolbars" : {
-        "icon_size" : 24
-    },
     "main_window" : {
         "title" : "noisr",
         "width" : 1000,
         "height" : 800,
-        "icon" : "./data/icons/avicon.svg"
+        "icon" : "./data/icons/ic_avicon.svg",
+        "ic_size" : 24
     },
     "env_paths" : {
         "toolbars" : "./configs/toolbars.json",
