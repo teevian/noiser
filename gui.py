@@ -2,7 +2,9 @@
 
 import json, time, os
 import pyqtgraph as pg
+
 from msgid import _
+from events import *
 from PyQt5.QtCore import (
         QSize, Qt, pyqtSlot
         )
@@ -45,7 +47,6 @@ class NoiserGUI(QMainWindow):
         ## global interface variables
         self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
         self.filename = 'instance_name.iad'
-        self.notes = {}
 
         ## create menus
         self._createMenuBar()
@@ -64,7 +65,7 @@ class NoiserGUI(QMainWindow):
         ## left board - data analyzer
         containerLeft = QVBoxLayout()
         containerLeft.addStretch()
-        containerLeft.addWidget(self.tabAnalyzerBoard, alignment = Qt.AlignTop)
+        containerLeft.addWidget(self.analyzer, alignment = Qt.AlignTop)
         containerLeft.addStretch()
         containerLeft.addWidget(self.log)
 
@@ -111,18 +112,18 @@ class NoiserGUI(QMainWindow):
             Creates a noter input text
         """
 
-        self.tabNoter = QTabWidget()
-        self.tabNoter.setTabBarAutoHide(True)
-        #self.tabNoter.setUsesScrollButtons(True)
-        self.tabNoter.setTabsClosable(True) # TODO to implement!
+        self.tabNoter = QTabWidget(movable=True, tabPosition=QTabWidget.East)
         self.tabNoter.setStyleSheet('QTabWidget::pane { border: 0; }')
 
-        for i in range(3):
+        notesColors = ['#F5DEB3', '#B5EAEA', '#E0B0FF', '#9AC48A']
+        for i, color in enumerate(notesColors):
             note = QTextEdit()
+            note.setStyleSheet(f"background-color: {color}; color: black")
             self.tabNoter.setFixedHeight(note.fontMetrics().lineSpacing() * 8 )
             self.tabNoter.setFixedWidth(note.fontMetrics().width('W') * 18 )
-            note.setPlainText(f'note {i+1}')
-            self.tabNoter.addTab(note, f'{i+1}')
+
+            note.setPlainText(f'note #{i+1}')
+            self.tabNoter.addTab(note, '')
 
     # TODO
     def _createMenuBar(self):
@@ -195,10 +196,8 @@ class NoiserGUI(QMainWindow):
             elif action['type'] == 'break':
                 self.insertToolBarBreak(toolbar_instance)
 
-
     def onClick(self):
-        print("test")
-
+        pass
 
     def thresholdValidator(self):
         validator = QIntValidator()
@@ -344,47 +343,46 @@ class NoiserGUI(QMainWindow):
 
     def createAnalyzer(self):
         """
-            Generates the Tab screen board from which data can be analyzed
+            Generates the display from which data can be analyzed
         """
 
         ## tab container and style
-        self.tabAnalyzerBoard = QTabWidget()
-        self.tabAnalyzerBoard.setMovable(True)
-        self.tabAnalyzerBoard.setTabPosition(QTabWidget.South)
-        self.tabAnalyzerBoard.setTabShape(QTabWidget.Triangular)
-        self.tabAnalyzerBoard.setStyleSheet("QTabWidget::pane { border: 0; }")
+        self.analyzer = QTabWidget(movable=True, tabPosition=QTabWidget.South)
+        self.analyzer.setStyleSheet("QTabWidget::pane { border: 0; }")
 
         ## plot
         plot = pg.PlotWidget()
-        x, y = range(0, 20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7]
+        x, y = range(20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7]
         plot.plot(x, y)
-        plot.setAspectLocked(lock = True, ratio = 1)
-
-        # plot tab container
-        tabPlot = QWidget()
-        layoutTabPlot = QHBoxLayout(tabPlot)
-        layoutTabPlot.setContentsMargins(0, 0, 0, 0)
-        tabPlot.setLayout(layoutTabPlot)
-        layoutTabPlot.addWidget(plot)
+        plot.setAspectLocked(lock=True, ratio=1)
 
         ## table
         table = QTableWidget(20, 4)
         table.setStyleSheet('background-color: rgb(0, 0, 0);')
         table.horizontalHeader().setStretchLastSection(True)
 
-        # table tab container
-        tabTable = QWidget()
-        layoutTabTable = QVBoxLayout(tabTable)
-        layoutTabTable.setContentsMargins(0, 0, 0, 0)
-        tabTable.setLayout(layoutTabTable)
-        layoutTabTable.addWidget(table)
+        tabPlot = self._analyzerTab(QHBoxLayout, plot)
+        tabTable = self._analyzerTab(QHBoxLayout, table)
+  
+        self.analyzer.addTab(tabPlot, QIcon('./data/icons/ic_read.svg'), 'Plot')
+        self.analyzer.addTab(tabTable, QIcon('./data/icons/ic_sum'), 'Table')
 
-        self.tabAnalyzerBoard.addTab(tabPlot, QIcon('./data/icons/ic_read.svg'), 'Plot')
-        self.tabAnalyzerBoard.addTab(tabTable, QIcon('./data/icons/ic_sum'), 'Table')
-
-        table.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'note'])
+        table.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'Comment'])
         table.verticalHeader().setVisible(False)
 
+    def _analyzerTab(self, layoutType, widget):
+        """
+            Wizard creates a tab for the analyzer board
+        """
+        tab_widget = QWidget()
+
+        layout = layoutType(tab_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        tab_widget.setLayout(layout)
+        layout.addWidget(widget)
+
+        return tab_widget
 
     def startReading(self):
         """

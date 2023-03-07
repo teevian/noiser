@@ -9,7 +9,7 @@
             {
                 "type": "button",
                 "name": "New File",
-                "icon": "./data/icons/new.svg",
+                "icon": "./data/icons/ic_instance_new.svg",
                 "status": "Creates new .IAD instance",
                 "action": "onClick"
             },

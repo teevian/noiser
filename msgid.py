@@ -11,23 +11,9 @@ __MAP_MESSAGES = {
         "LUIS_MELO_GREETING" : "Viva!"
     }
 
-__MAP_ICONS = {
-
-}
-
-ICONS_PATH = './data/icons/'
-
 def _(msgid):
     """
-        Returns a message to be given to the user
+        Returns a message from the messages map
     """
 
     return __MAP_MESSAGES.get(msgid, msgid)
-
-def _ic(icid):
-    """
-        Returns the path of a given icon
-    """
-
-    path = ICONS_PATH + icid + '.svg'
-    return __MAP_MESSAGES.get(path, ICONS_PATH + 'ic_default.svg')
