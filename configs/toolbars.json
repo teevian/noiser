@@ -63,10 +63,10 @@
             },
             {
                 "type": "button",
-                "name": "Connection Info",
+                "name": "Connect",
                 "icon": "./data/icons/ic_info_connection.svg",
-                "status": "Info about the connection",
-                "action": "onClick"                
+                "status": "Connects to board",
+                "action": "onConnectButtonClick"                
             },
             {
                 "type": "combobox",

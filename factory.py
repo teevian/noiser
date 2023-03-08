@@ -149,7 +149,7 @@ def StatusBar(window, filename, backgroundColor='background-color: rgb(0, 122, 2
     # status bar with Professor's type of greeting
     statusbar = window.statusBar()
     statusbar.setStyleSheet(backgroundColor)
-    statusbar.showMessage(_('LUIS_MELO_GREETING'), 3000)
+    statusbar.showMessage(_('EASTER_EGG_LUIS_MELO_GREETING'), 3000)
 
     label_filename = QLabel(filename)
     statusbar.addPermanentWidget(label_filename)

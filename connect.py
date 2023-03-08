@@ -26,9 +26,19 @@ def openConnection(arduinoPort):
     """
         Opens the connection with arduino through @arduinoPort
     """
-    if arduinoPort:
+    if bool(arduinoPort):
         try:
-            return serial.Serial(arduinoPort, timeout=1)
+            # https://pyserial.readthedocs.io/en/stable/pyserial_api.html
+            return serial.Serial(arduinoPort, 9600, timeout=1)
         except serial.SerialException:
-            pass
-    raise Exception('Serial monitor not found!')
+            raise Exception('Serial monitor not found!')
+
+def listenToPin(connection, pin=0):
+    connection.reset_input_buffer()
+
+    connection.write(pin if 0 <= pin <= 5 else 0)
+    
+    while True:
+        if connection.in_waiting > 0:   # checks if any data is available
+            voltage = connection.readline().decode('utf-8').rstrip()
+            print(time.strftime("%H:%M:%S", time.localtime()) + " : " + voltage)

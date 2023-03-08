@@ -5,7 +5,7 @@ import pyqtgraph as pg
 import factory, connect
 
 from platform import system
-from msgid import _
+from msgid import _, egg
 from events import *
 from PyQt5.QtCore import (
         QSize, Qt, pyqtSlot
@@ -30,7 +30,7 @@ class NoiserGUI(QMainWindow):
     """
     def __init__(self, parent=None):
         super(NoiserGUI, self).__init__(parent)
-        self.initUI(self.loadConfigs()) # TODO does not need to be class method
+        self.initUI(self.loadConfigs())
 
 
     def initUI(self, configs):
@@ -40,7 +40,6 @@ class NoiserGUI(QMainWindow):
         ## window setup
         window = configs['main_window']
 
-        #self.setupEnvironment(configs)
         self.setupEnvironment()
 
         self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
@@ -68,6 +67,7 @@ class NoiserGUI(QMainWindow):
         self.log.i(_('ENV_OK'))
 
         # TODO auto-start connection
+        self.openConnection()
 
 
     class Logger(QTextEdit):
@@ -87,13 +87,13 @@ class NoiserGUI(QMainWindow):
             logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + message
             self.append(logMessage)
 
-        def e(self, message, err):
-            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + str(err) + ': ' + message
-            self.append(self.error.format(logMessage))
-
         def v(self, message):
             logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + message
             self.append(self.valid.format(logMessage))
+
+        def e(self, message, err):
+            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + str(err) + ': ' + message
+            self.append(self.error.format(logMessage))
 
     def _createMainLayout(self):
         """
@@ -128,27 +128,38 @@ class NoiserGUI(QMainWindow):
     def onClick(self):
         pass
 
+    def onConnectButtonClick(self):
+        """
+            Re-establishes the connection with arduino
+        """
+        self.log.i(_('CON_NEW'))
+        ports = connect.getPorts(system())
+        self.log.i(_('CON_CHECKING_PORTS') + ','.join(map(str, ports)))
+        self.openConnection()
+
     def openConnection(self):
         try:
             self.serialConnection = connect.openConnection(
-                self.ids['comboboxConnectedPorts'].currentText())
+                self.ids['comboboxConnectedPorts'].currentText()
+                )
+            print(self.serialConnection)    # TODO show connection and connection info on logger
+            self.log.v(_('CON_SERIAL_OK') + egg())
         except Exception as err:
-            self.log.e(_('ERR_SERIAL_NOT_CONNECTED'), err)
+            self.log.e(_('CON_SERIAL_ERR'), err)
             print(err)
+
 
     def getPorts(self):
         ports = ['no board']
         try:
             ports = connect.getPorts(system())
-            #self.connection = connect.openConnection(
-            #self.ids['comboboxConnectedPorts'].currentText())
-
-            self.log.v(_('CON_ARDUINO_CONNECTED') + ','.join(map(str, ports)))
+            self.log.v(_('CON_ARDUINO_OK') + ','.join(map(str, ports)))
         except Exception as err:
-            self.log.e(_('CON_ERR_ARDUINO_NOT_CONNECTED'), err)
+            self.log.e(_('CON_ARDUINO_ERR'), err)
             print(err)
         finally:
             return ports
+
 
     def thresholdValidator(self):
         validator = QIntValidator()
@@ -157,14 +168,14 @@ class NoiserGUI(QMainWindow):
 
 
     def btPlayPauseClicked(self):
-        if(self.isReading):
+        if self.isReading:
             self.stopReadingData()
             self.btPlayPause.setText('PLAY')
         else:
             self.startReadingData()
             self.btPlayPause.setText('PAUSE')
-    
-    
+
+
     def btPlayPauseOnToggled(self, pushed):
         if pushed:
             self.btPlayPause.setIcon(QIcon('./data/icons/warning.svg'))
@@ -177,17 +188,20 @@ class NoiserGUI(QMainWindow):
         self.startReadingData()
         self.btLiveRead.setText('READING')
 
+
     def btLiveReadReleased(self):
         self.stopReadingData()
         self.btLiveRead.setText('LIVE')
 
+
     def btScheduledClicked(self):
-        if(self.isReading):
+        if self.isReading :
             self.stopReadingData()
             self.btScheduledRead.setText('SCHEDULE')
         else:
             self.startReadingData()
             self.btScheduledRead.setText('READING')
+
 
     def bt_plot_clicked(self):
         print(self.bt_plot.isChecked())
@@ -242,7 +256,7 @@ class NoiserGUI(QMainWindow):
 
         self.log('Stopped reading.')
 
-
+    ## TODO IMPROVE THIS
     def setupEnvironment(self, path='./configs/toolbars.json'):
         """
             Sets up global attributes for the window
@@ -250,12 +264,10 @@ class NoiserGUI(QMainWindow):
         self.ids = {}
         with open(path, 'r') as ids:
             env = json.load(ids)
-
             for key in env:
                 for item in env[key]['actions']:
                     if '@id' in item:
                         self.ids[item['@id']] = ''
-        print(self.ids)
 
 
     # TODO missing args from the caller
