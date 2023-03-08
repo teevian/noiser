@@ -146,7 +146,7 @@ class NoiserGUI(QMainWindow):
             self.serialConnection = connect.openConnection(port)
             self.log.v(_('CON_SERIAL_OK'))
             handshake = connect.testConnection()
-            self.log.i(_('CON_ARDUINO_SAYS') + egg())
+            self.log.i(_('CON_ARDUINO_SAYS') + egg(handshake))
         except Exception as err:
             self.log.e(_('CON_SERIAL_ERR'), err)
             print(err)
