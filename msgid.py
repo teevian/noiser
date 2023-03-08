@@ -8,7 +8,11 @@ __MAP_MESSAGES = {
         "DATA_SAVE": "Saving the precious data...",
         "DATA_LOAD": "Loading the precious data...",
         "EASTER_EGG": "HTTP 418: I'm a teapot 🫖",
-        "LUIS_MELO_GREETING" : "Viva!"
+        "LUIS_MELO_GREETING" : "Viva!",
+
+        "CON_ARDUINO_CONNECTED" : "Arduino found on port(s) ",
+        "CON_ERR_ARDUINO_NOT_CONNECTED" : "Arduino not found",
+        "CON_ERR_SERIAL_NOT_CONNECTED" : "Serial monitor not connected"
     }
 
 def _(msgid):

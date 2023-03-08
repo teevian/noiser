@@ -5,7 +5,8 @@
         "license" : "Open Source"
     },
     "settings" : {
-        "startup_performance" : "high"
+        "std_filename" : "tesla.IAD",
+        "std_performance" : "high"
     },
     "main_window" : {
         "title" : "noisr",

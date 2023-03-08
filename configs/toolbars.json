@@ -55,6 +55,7 @@
         "actions": [
             {
                 "type": "button",
+                "@id" : "btBoardInfo",
                 "name": "Board Info",
                 "icon": "./data/icons/info_board.svg",
                 "status": "Info about the board",
@@ -69,6 +70,7 @@
             },
             {
                 "type": "combobox",
+                "@id" : "comboboxConnectedPorts",
                 "name": "Items",
                 "status": "Select connected ports",
                 "action": "getPorts"
@@ -112,7 +114,6 @@
             "floatable" : "true"
         },
         "actions": [
-
             {
                 "type": "label",
                 "text": "threshold (V):"
@@ -121,6 +122,12 @@
                 "type": "lineEdit",
                 "width": "50",
                 "validator": "thresholdValidator"
+            },
+            {
+                "type" : "combobox",
+                "name": "Analyzer:",
+                "status": "Selects which PORT is to analyze",
+                "action": "getPorts"
             }
         ]
     },

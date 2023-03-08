@@ -2,8 +2,9 @@
 
 import json, time, os
 import pyqtgraph as pg
-import factory
+import factory, connect
 
+from platform import system
 from msgid import _
 from events import *
 from PyQt5.QtCore import (
@@ -16,10 +17,10 @@ from PyQt5.QtWidgets import (
         QComboBox, QDialog, QTabWidget, QSizePolicy,
         QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
         QLineEdit, QPlainTextEdit, QMenuBar, QMenu, QToolBar,
-        QAction, QDoubleSpinBox, QCheckBox, QGridLayout
+        QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QTextEdit
         )
 from PyQt5.QtGui import (
-        QIcon, QIntValidator
+        QIcon, QIntValidator, QColor
         )
 
 
@@ -29,23 +30,25 @@ class NoiserGUI(QMainWindow):
     """
     def __init__(self, parent=None):
         super(NoiserGUI, self).__init__(parent)
-        configs = self.setupEnvironment()
-        self.initUI(configs)
+        self.initUI(self.loadConfigs()) # TODO does not need to be class method
 
 
     def initUI(self, configs):
         """
             Sets up the layout and user interface
         """
-        ## window setup and global attributes
+        ## window setup
         window = configs['main_window']
+
+        #self.setupEnvironment(configs)
+        self.setupEnvironment()
+
+        self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
+        self.filename = 'instance_name.IAD'
 
         self.setWindowTitle(window['title'])
         self.setWindowIcon(QIcon(window['icon']))
         self.resize(QSize(window['width'], window['height']))
-
-        self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
-        self.filename = 'instance_name.iad'
 
         ## create Noisr widgets
         self.log = NoiserGUI.Logger()
@@ -60,7 +63,42 @@ class NoiserGUI(QMainWindow):
         factory.Controllers(self)
 
         self.createAnalyzer()
+        self._createMainLayout()
 
+        self.log.i(_('ENV_OK'))
+
+        # TODO auto-start connection
+
+
+    class Logger(QTextEdit):
+        """
+            NoiserGUI.Logger class to communicate with user
+        """
+        def __init__(self, parent=None):
+            super(NoiserGUI.Logger, self).__init__(parent)
+            self.setReadOnly(True)
+
+            self.error    = '<span style="color:red;">{}</span>'# TODO CHANGE THIS RED
+            self.warning  = '<span style="color:orange;">{}</span>'
+            self.valid    = '<span style="color:green;">{}</span>'
+
+
+        def i(self, message):   # logs info messages
+            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + message
+            self.append(logMessage)
+
+        def e(self, message, err):
+            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + str(err) + ': ' + message
+            self.append(self.error.format(logMessage))
+
+        def v(self, message):
+            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + message
+            self.append(self.valid.format(logMessage))
+
+    def _createMainLayout(self):
+        """
+            Creates the layout for the application
+        """
         ## left board - for data analysis
         containerLeft = QVBoxLayout()
         containerLeft.addStretch()
@@ -86,42 +124,36 @@ class NoiserGUI(QMainWindow):
         NoisrWidget.setLayout(containerMain)
         self.setCentralWidget(NoisrWidget)
 
-        self.log.i(_('ENV_OK'))
-
-
-    class Logger(QPlainTextEdit):
-        """
-            NoiserGUI.Logger class to communicate with user
-        """
-        def __init__(self, parent=None):
-            super(NoiserGUI.Logger, self).__init__(parent)
-            self.setReadOnly(True)
-
-
-        def i(self, message):   # logs info messages
-            logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message
-            self.appendPlainText(logMessage)
-        
-
-        def e(self, message, exception):   # logs error messages // TODO red text
-            logMessage = time.strftime("%H:%M:%S", time.localtime()) + '\t' + message
-            self.appendPlainText(logMessage)
 
     def onClick(self):
         pass
+
+    def openConnection(self):
+        try:
+            self.serialConnection = connect.openConnection(
+                self.ids['comboboxConnectedPorts'].currentText())
+        except Exception as err:
+            self.log.e(_('ERR_SERIAL_NOT_CONNECTED'), err)
+            print(err)
+
+    def getPorts(self):
+        ports = ['no board']
+        try:
+            ports = connect.getPorts(system())
+            #self.connection = connect.openConnection(
+            #self.ids['comboboxConnectedPorts'].currentText())
+
+            self.log.v(_('CON_ARDUINO_CONNECTED') + ','.join(map(str, ports)))
+        except Exception as err:
+            self.log.e(_('CON_ERR_ARDUINO_NOT_CONNECTED'), err)
+            print(err)
+        finally:
+            return ports
 
     def thresholdValidator(self):
         validator = QIntValidator()
         validator.setRange(-25, 25)
         return validator
-
-
-    def getPorts(self):
-        """
-            Shows ports whose connection is made with Arduino - LINUX COMPATIBLE
-        """
-        ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
-        return ports if ports else ['no board']
 
 
     def btPlayPauseClicked(self):
@@ -211,8 +243,23 @@ class NoiserGUI(QMainWindow):
         self.log('Stopped reading.')
 
 
+    def setupEnvironment(self, path='./configs/toolbars.json'):
+        """
+            Sets up global attributes for the window
+        """
+        self.ids = {}
+        with open(path, 'r') as ids:
+            env = json.load(ids)
+
+            for key in env:
+                for item in env[key]['actions']:
+                    if '@id' in item:
+                        self.ids[item['@id']] = ''
+        print(self.ids)
+
+
     # TODO missing args from the caller
-    def setupEnvironment(self, configsPath='./configs/settings.json'):
+    def loadConfigs(self, configsPath='./configs/settings.json'):
         """
             Sets up the global environment according to the configs.json file
         """

@@ -176,7 +176,7 @@ def ToolBar(self, toolbarModel, name):
     actions = toolbarModel['actions']
     settings = toolbarModel['settings']
 
-    # set up geometry settings into code
+    # sets up geometry settings into code
     movable = settings.get('movable', 'True').lower() == 'true'
     floatable = settings.get('floatable', 'True').lower() == 'true'
     position = settings.get('position', 'top')
@@ -206,6 +206,9 @@ def ToolBar(self, toolbarModel, name):
         elif action['type'] == 'combobox':
             comboBoxPorts = QComboBox()
             itemsFunction = getattr(self, action['action'])
+            if '@id' in action:
+                id = action['@id']
+                self.ids[id] = comboBoxPorts
             items = itemsFunction()
             comboBoxPorts.addItems(items)
             toolbar.addWidget(comboBoxPorts)
