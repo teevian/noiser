@@ -18,5 +18,11 @@
         "toolbars" : "./configs/toolbars.json",
         "logger" : "./configs/logger.json",
         "icons" : "./data/icons/"
+    },
+    "notes_colors": {
+        "wheat": "#F5DEB3",
+        "lightcyan": "#B5EAEA",
+        "mauve": "#E0B0FA",
+        "olivedrab": "#9AC48A"
     }
 }
