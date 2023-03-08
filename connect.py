@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import os, time
+from msgid import egg
+import os, time, random
 import serial.tools.list_ports  # should pip install esptool
 
 
@@ -33,6 +34,7 @@ def openConnection(arduinoPort):
         except serial.SerialException:
             raise Exception('Serial monitor not found!')
 
+
 def listenToPin(connection, pin=0):
     connection.reset_input_buffer()
 
@@ -42,3 +44,25 @@ def listenToPin(connection, pin=0):
         if connection.in_waiting > 0:   # checks if any data is available
             voltage = connection.readline().decode('utf-8').rstrip()
             print(time.strftime("%H:%M:%S", time.localtime()) + " : " + voltage)
+
+
+def parseConnectionInfo(connection):
+    """
+        Receives a @connection string and returns a representative dict
+    """
+    pairsList = connection.split("(")[1].split(")")[0].split(",")   # remove special characters
+    pairsList = [pair.strip() for pair in pairsList]                # removes white spaces
+
+    parsedConnection = {}
+    for pair in pairsList:                                          # splits into key-value pairs
+        key, value = pair.split("=")
+        parsedConnection[key.strip()] = value.strip()
+
+    return parsedConnection
+
+
+def testConnection(connection): # TODO missing arduino sending signal
+    """
+        Handshake between me and the Arduino: he gives a random number
+    """
+    return egg(random.randint(0, 100))

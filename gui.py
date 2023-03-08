@@ -130,30 +130,36 @@ class NoiserGUI(QMainWindow):
 
     def onConnectButtonClick(self):
         """
-            Re-establishes the connection with arduino
+            (Re-)establishes connection with Arduino
         """
         self.log.i(_('CON_NEW'))
-        ports = connect.getPorts(system())
-        self.log.i(_('CON_CHECKING_PORTS') + ','.join(map(str, ports)))
+        ports = connect.getPorts(self.system)
+        self.log.i(_('CON_CHECKING_PORTS') + str(ports))
         self.openConnection()
 
     def openConnection(self):
+        """
+            Opens connection with Arduino
+        """
+        port = self.ids['comboboxConnectedPorts'].currentText()
         try:
-            self.serialConnection = connect.openConnection(
-                self.ids['comboboxConnectedPorts'].currentText()
-                )
-            print(self.serialConnection)    # TODO show connection and connection info on logger
-            self.log.v(_('CON_SERIAL_OK') + egg())
+            self.serialConnection = connect.openConnection(port)
+            self.log.v(_('CON_SERIAL_OK'))
+            handshake = connect.testConnection()
+            self.log.i(_('CON_ARDUINO_SAYS') + egg())
         except Exception as err:
             self.log.e(_('CON_SERIAL_ERR'), err)
             print(err)
 
 
     def getPorts(self):
+        """
+            Checks for ports with connected boards
+        """
         ports = ['no board']
         try:
             ports = connect.getPorts(system())
-            self.log.v(_('CON_ARDUINO_OK') + ','.join(map(str, ports)))
+            self.log.v(_('CON_ARDUINO_OK') + str(ports))
         except Exception as err:
             self.log.e(_('CON_ARDUINO_ERR'), err)
             print(err)
@@ -261,6 +267,7 @@ class NoiserGUI(QMainWindow):
         """
             Sets up global attributes for the window
         """
+        self.system = system()
         self.ids = {}
         with open(path, 'r') as ids:
             env = json.load(ids)

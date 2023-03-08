@@ -44,7 +44,6 @@ def AnalyzerTab(layoutType, widget):
     """
         Factors a tab for the analyzer board
     """
-
     analyzerTab = QWidget()
     layout = layoutType(analyzerTab)
     layout.setContentsMargins(0, 0, 0, 0)
