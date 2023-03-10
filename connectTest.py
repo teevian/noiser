@@ -50,7 +50,7 @@ def getData():
                 line = serial_con.readline().decode('utf-8').rstrip()
                 print(line)
 
-requestLiveDataFromPin(0);
+requestLiveDataFromPin(0)
 
 """
 if not os.path.isfile(PATH_SERIAL_ARDUINO):

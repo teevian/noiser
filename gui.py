@@ -2,7 +2,7 @@
 
 import json, time, os
 import pyqtgraph as pg
-import factory, connect
+import factory, connection
 
 from platform import system
 from msgid import _, egg
@@ -45,7 +45,7 @@ class NoiserGUI(QMainWindow):
         self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
         self.filename = 'instance_name.IAD'
 
-        self.setWindowTitle(window['title'])
+        self.setWindowTitle(window['title']) # TODO + version
         self.setWindowIcon(QIcon(window['icon']))
         self.resize(QSize(window['width'], window['height']))
 
@@ -66,8 +66,28 @@ class NoiserGUI(QMainWindow):
 
         self.log.i(_('ENV_OK'))
 
-        # TODO auto-start connection
-        self.openConnection()
+        # TODO auto-start connection // improve code (redundant calls)
+        self.serial_connection = None
+        arduino_port = self.ids['comboboxConnectedPorts'].currentText()
+        self.openConnection(arduino_port)
+        self.serial_thread = connection.SerialReader(
+            arduino_port, self.ids['readRateSpinbox'].value(), self)
+        self.is_reading = False
+        self.serial_thread.data_ready.connect(self.update)
+
+
+    def openConnection(self, port):
+        """
+            Opens connection with Arduino
+        """
+        try:
+            self.serial_connection = connection.openConnection(port)
+            handshake = connection.handshake(self.serial_connection)
+            self.log.v(_('CON_SERIAL_OK'))
+            self.log.i(_('CON_ARDUINO_SAYS') + handshake)
+        except Exception as err:
+            self.log.e(_('CON_SERIAL_ERR'), err)
+            print(err)
 
 
     class Logger(QTextEdit):
@@ -78,7 +98,7 @@ class NoiserGUI(QMainWindow):
             super(NoiserGUI.Logger, self).__init__(parent)
             self.setReadOnly(True)
 
-            self.error    = '<span style="color:red;">{}</span>'# TODO CHANGE THIS RED
+            self.error    = '<span style="color:#c0392b;">{}</span>'
             self.warning  = '<span style="color:orange;">{}</span>'
             self.valid    = '<span style="color:green;">{}</span>'
 
@@ -94,6 +114,9 @@ class NoiserGUI(QMainWindow):
         def e(self, message, err):
             logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + str(err) + ': ' + message
             self.append(self.error.format(logMessage))
+
+    def update(self, value):
+        print(value)
 
     def _createMainLayout(self):
         """
@@ -130,27 +153,31 @@ class NoiserGUI(QMainWindow):
 
     def onConnectButtonClick(self):
         """
-            (Re-)establishes connection with Arduino
+            Handshakes Arduino
         """
         self.log.i(_('CON_NEW'))
-        ports = connect.getPorts(self.system)
-        self.log.i(_('CON_CHECKING_PORTS') + str(ports))
+        self.log.i(_('CON_CHECKING_PORTS'))
+        self.getPorts()
         self.openConnection()
 
-    def openConnection(self):
-        """
-            Opens connection with Arduino
-        """
-        port = self.ids['comboboxConnectedPorts'].currentText()
-        try:
-            self.serialConnection = connect.openConnection(port)
-            self.log.v(_('CON_SERIAL_OK'))
-            handshake = connect.testConnection()
-            self.log.i(_('CON_ARDUINO_SAYS') + egg(handshake))
-        except Exception as err:
-            self.log.e(_('CON_SERIAL_ERR'), err)
-            print(err)
+    def onReadStopButtonClick(self):
+        print("test")
+        if not self.is_reading:
+            connection.startReadingPin(self, self.serial_thread.serial_connection, 0)
+        else:
+            connection.stopReadingPin(self, self.serial_thread.serial_connection, 0)
+ 
+    def onRead2StopButtonClick(self):
+        if not self.is_reading:
+            self.stopReadingData()
+            self.btPlayPause.setText('PLAY')
+        else:
+            self.startReadingData()
+            self.btPlayPause.setText('PAUSE')
 
+
+    def readPin(self, pin):
+        pass#connect.listenToPin(self.serialConnection, 0, 1)
 
     def getPorts(self):
         """
@@ -158,7 +185,7 @@ class NoiserGUI(QMainWindow):
         """
         ports = ['no board']
         try:
-            ports = connect.getPorts(system())
+            ports = connection.getPorts(self.system)
             self.log.v(_('CON_ARDUINO_OK') + str(ports))
         except Exception as err:
             self.log.e(_('CON_ARDUINO_ERR'), err)
@@ -171,16 +198,6 @@ class NoiserGUI(QMainWindow):
         validator = QIntValidator()
         validator.setRange(-25, 25)
         return validator
-
-
-    def btPlayPauseClicked(self):
-        if self.isReading:
-            self.stopReadingData()
-            self.btPlayPause.setText('PLAY')
-        else:
-            self.startReadingData()
-            self.btPlayPause.setText('PAUSE')
-
 
     def btPlayPauseOnToggled(self, pushed):
         if pushed:
@@ -208,6 +225,9 @@ class NoiserGUI(QMainWindow):
             self.startReadingData()
             self.btScheduledRead.setText('READING')
 
+    def setReadRate(self):
+        #self.serial_thread.rate = rate
+        pass
 
     def bt_plot_clicked(self):
         print(self.bt_plot.isChecked())

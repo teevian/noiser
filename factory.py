@@ -112,7 +112,7 @@ def Scheduler(self):
     self.btPlayPause = QPushButton(QIcon('./data/icons/target.svg'), '')
     self.btPlayPause.setIconSize(self.ICON_SIZE)
     self.btPlayPause.setCheckable(True)
-    self.btPlayPause.toggled.connect(self.btPlayPauseOnToggled)
+    self.btPlayPause.toggled.connect(self.onReadStopButtonClick)
 
     self.btRegister = QPushButton(QIcon('./data/icons/save_data.svg'), '')
     self.btRegister.setIconSize(self.ICON_SIZE)
@@ -123,7 +123,6 @@ def Scheduler(self):
 
 
 def Controllers(self):
-    
     self.layoutControllers = QHBoxLayout()
     self.layoutControllers.addWidget(self.btPlayPause)
     self.layoutControllers.addWidget(self.btRegister)
@@ -190,14 +189,14 @@ def ToolBar(self, toolbarModel, name):
     }[position],
         toolbar)
 
-    # TODO create an exception AND IMPROVE THIS
+    # TODO create an exception AND OPTIMIZE THIS CODE BEFORE PROJECT SUBMISSION TODO TODO TODO TODO 
     # toolbar factory from lambda dictionary
     for action in actions:
         if action['type'] == 'button':
-            btAction = QAction(QIcon(action['icon']), action['name'], self)
-            btAction.setStatusTip(action['status'])
-            btAction.triggered.connect(getattr(self, action['action']))
-            toolbar.addAction(btAction)
+            button = QAction(QIcon(action['icon']), action['name'], self)
+            button.setStatusTip(action['status'])
+            button.triggered.connect(getattr(self, action['action']))
+            toolbar.addAction(button)
         elif action['type'] == 'separator':
             toolbar.addSeparator()
         elif action['type'] == 'label':
@@ -212,7 +211,15 @@ def ToolBar(self, toolbarModel, name):
             comboBoxPorts.addItems(items)
             toolbar.addWidget(comboBoxPorts)
         elif action['type'] == 'spinbox':
-            toolbar.addWidget(QSpinBox())
+            spinBox = QSpinBox()
+            spinBox.setStatusTip(action['status'])
+            spinBox.setValue(int(action['value']))
+            spinBox.setRange(int(action['min']), int(action['max']))
+            itemsFunction = getattr(self, action['action'])
+            if '@id' in action:
+                id = action['@id']
+                self.ids[id] = spinBox
+            toolbar.addWidget(spinBox)
         elif action['type'] == 'lineEdit':
             editLine = QLineEdit()
             editLine.setFixedWidth(int(action['width']))
