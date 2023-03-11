@@ -129,7 +129,7 @@ def Controllers(self):
     self.layoutControllers.addWidget(self.btRegister)
 
 
-def boardInfo():
+def boardInfoDialog():
     dialog = QDialog()
     dialog.setWindowTitle("Arduino Information")
     dialog.setWindowModality(Qt.ApplicationModal)
@@ -209,7 +209,7 @@ def boardInfo():
     dialog.exec_()
 
 
-def boardCode(path='./noiserino/noiserino.ino'):
+def boardCodeDialog(path='./noiserino/noiserino.ino'):
     with open(path, "r") as f:
         code = f.read()
 
@@ -259,14 +259,12 @@ def StatusBar(window, filename, backgroundColor='background-color: rgb(0, 122, 2
     """
         Factors the statusbar
     """
-
-    # status bar with Professor's type of greeting
-    statusbar = window.statusBar()
-    statusbar.setStyleSheet(backgroundColor)
-    statusbar.showMessage(_('EASTER_EGG_LUIS_MELO_GREETING'), 3000)
+    window.statusbar = window.statusBar()
+    window.statusbar.setStyleSheet(backgroundColor)
+    window.statusbar.showMessage(_('EASTER_EGG_LUIS_MELO_GREETING'), 3000)
 
     label_filename = QLabel(filename)
-    statusbar.addPermanentWidget(label_filename)
+    window.statusbar.addPermanentWidget(label_filename)
 
 
 def ToolBars(self, path='./configs/toolbars.json'):

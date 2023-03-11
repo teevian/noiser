@@ -9,6 +9,9 @@ __MAP_MESSAGES = {
         "DATA_LOAD" : "Loading the precious data... ",
         "NO_BOARD" : "no board",
         "CREATED_LOGGER" : "I've created myself",
+        "EASTER_EGG_LUIS_MELO_GREETING" : "Viva!",
+
+        "STATUSBAR_READ_START" : "Reading!",
 
         "CON_NEW"   : "Establishing a new connection... ",
         "CON_CHECKING_PORTS" : "Checking for Arduino connected ports... ",
@@ -21,7 +24,9 @@ __MAP_MESSAGES = {
         "CON_OK_PORTS" : "Arduino found on port(s)",
         "CON_SOL_PORTS" : "Check if the Arduino is connected... or alive",
         "CON_SOL_SERIAL" : "Is the Serial being used somewhere else?",
-        "CON_ERR_TIMEOUT" : "Seems like the Arduino may be busy processing other threads :("
+        "CON_ERR_TIMEOUT" : "Seems like the Arduino may be busy processing other threads :(",
+
+        "ERR_THREAD_RUNNING" : "💥 Stop reading first! You wouldn't want to EXPLODE your expensive Raspberry PI"
     }
 
 def _(msgid):
@@ -36,7 +41,6 @@ def egg(randomInt):
         "'I'm sorry, Dave, I'm afraid I can't do that'",   # 2001 Space Odissey
         "'DON'T PANIC'",                                   # Hitchhikers Guide to the Galaxy
         "'Hello, World!'",                                 # Hello world
-        "'Houston, we have a problem'",                    # Apollo 13
-        "'Viva!'"                                          # Prof Luis Melo greeting
+        "'Houston, we have a problem'"                     # Apollo 13
     ]
     return eggs[randomInt % len(eggs)]

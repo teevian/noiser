@@ -118,16 +118,26 @@
                 "icon": "./data/icons/notes.svg",
                 "status": "All notes taken for this .IAD instance",
                 "action": "onClick"
+            },
+            {
+                "type": "button",
+                "name": "Info",
+                "icon": "./data/icons/ic_info.svg",
+                "status": "Info about NOISR",
+                "action": "doNothing"
             }
         ]
     },
     "parameters": {
         "settings": {
-            "position": "bottom",
+            "position": "top",
             "movable" : "True",
             "floatable" : "true"
         },
         "actions": [
+            {
+                "type" : "break"
+            },
             {
                 "type": "label",
                 "text": "Threshold [V]:"

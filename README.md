@@ -1,6 +1,5 @@
-# noiser
-Software interfacing Arduino and Raspberry for Noise applications
-
+# noisr
+Software interfacing Arduino for noise applications
 
 ## Credits
 
@@ -13,3 +12,4 @@ Thanks to all people involved.
 ## References
 
 [Python_Effective_Serial_Data_Processing] (https://medium.com/geekculture/python-effective-serial-data-processing-53711432509b)
+[Thread_Context_Manager] (https://superfastpython.com/thread-context-manager/)
