@@ -1,4 +1,5 @@
 __MAP_MESSAGES = {
+        "ENV_CREATE" : "Creating NOISR environment...",
         "ENV_OK"    : "The environment is set and ready to go! ",
         "ENV_EXIT"  : "Live long and prosper! ",
         "CON_ERR_NOT_OK": "404: board not found ",
@@ -6,13 +7,21 @@ __MAP_MESSAGES = {
         "READ_STOP" : "Stopped reading 🟥 ",
         "DATA_SAVE" : "Saving the precious data... ",
         "DATA_LOAD" : "Loading the precious data... ",
+        "NO_BOARD" : "no board",
+        "CREATED_LOGGER" : "I've created myself",
+
         "CON_NEW"   : "Establishing a new connection... ",
-        "CON_CHECKING_PORTS" : "Checking ports... ",
-        "CON_ARDUINO_OK" : "Arduino found on port(s) ",
+        "CON_CHECKING_PORTS" : "Checking for Arduino connected ports... ",
         "CON_SERIAL_OK" : "Serial connection established! ",
         "CON_ARDUINO_SAYS" : "Handhake at Serial Monitor: Arduino says ",
-        "CON_ARDUINO_ERR" : "Arduino not found ",
-        "CON_SERIAL_ERR" : "Serial monitor not connected "
+        "CON_SERIAL_ERR" : "Serial not connected ",
+
+        "CON_PORTS" : "Checking connected boards through USB ports...",
+        "CON_ERR_PORTS" : "No Arduino found at this port",
+        "CON_OK_PORTS" : "Arduino found on port(s)",
+        "CON_SOL_PORTS" : "Check if the Arduino is connected... or alive",
+        "CON_SOL_SERIAL" : "Is the Serial being used somewhere else?",
+        "CON_ERR_TIMEOUT" : "Seems like the Arduino may be busy processing other threads :("
     }
 
 def _(msgid):
@@ -23,11 +32,11 @@ def _(msgid):
 
 def egg(randomInt):
     eggs = [
-        "'HTTP 418: I'm a teapot 🫖' ",                     # HTTP: 418
-        "'I'm sorry, Dave, I'm afraid I can't do that' ",   # 2001 Space Odissey
-        "'DON'T PANIC' ",                                   # Hitchhikers Guide to the Galaxy
-        "'Hello, World!' ",                                 # Hello world
-        "'Houston, we have a problem' ",                    # Apollo 13
-        "'Viva!' "                                          # Prof Luis Melo greeting
+        "'HTTP 418: I'm a teapot 🫖'",                     # HTTP: 418
+        "'I'm sorry, Dave, I'm afraid I can't do that'",   # 2001 Space Odissey
+        "'DON'T PANIC'",                                   # Hitchhikers Guide to the Galaxy
+        "'Hello, World!'",                                 # Hello world
+        "'Houston, we have a problem'",                    # Apollo 13
+        "'Viva!'"                                          # Prof Luis Melo greeting
     ]
     return eggs[randomInt % len(eggs)]

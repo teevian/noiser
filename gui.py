@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import json, time, os
+import json, time, os, serial
 import pyqtgraph as pg
 import factory, connection
 
@@ -8,7 +8,7 @@ from platform import system
 from msgid import _, egg
 from events import *
 from PyQt5.QtCore import (
-        QSize, Qt, pyqtSlot
+        QSize, Qt, pyqtSlot, QDateTime
         )
 from PyQt5.QtWidgets import (
         QApplication, QMainWindow, QPushButton,
@@ -23,6 +23,9 @@ from PyQt5.QtGui import (
         QIcon, QIntValidator, QColor
         )
 
+######################################################################
+# PyQt window for a Noisr instance
+######################################################################         
 
 class NoiserGUI(QMainWindow):
     """
@@ -44,6 +47,7 @@ class NoiserGUI(QMainWindow):
 
         self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
         self.filename = 'instance_name.IAD'
+        self.is_reading = False
 
         self.setWindowTitle(window['title']) # TODO + version
         self.setWindowIcon(QIcon(window['icon']))
@@ -51,6 +55,7 @@ class NoiserGUI(QMainWindow):
 
         ## create Noisr widgets
         self.log = NoiserGUI.Logger()
+        self.log.i(_('ENV_CREATE'))
 
         factory.ToolBars(self, configs['env_paths']['toolbars'])
         factory.MenuBar(self, 'path to menu file')
@@ -65,58 +70,177 @@ class NoiserGUI(QMainWindow):
         self._createMainLayout()
 
         self.log.i(_('ENV_OK'))
-
-        # TODO auto-start connection // improve code (redundant calls)
-        self.serial_connection = None
-        arduino_port = self.ids['comboboxConnectedPorts'].currentText()
-        self.openConnection(arduino_port)
-        self.serial_thread = connection.SerialReader(
-            arduino_port, self.ids['readRateSpinbox'].value(), self)
-        self.is_reading = False
-        self.serial_thread.data_ready.connect(self.update)
-
-
-    def openConnection(self, port):
+  
+        self.openConnection()
+ 
+    # handshake
+    def openConnection(self, baudrate=9600):
         """
-            Opens connection with Arduino
+            Opens connection w/ current selected port
         """
+        try:    # https://superfastpython.com/thread-context-manager/
+            # the 'with' ensures that the connection is closed
+            with serial.Serial(self.ids['combobox_connected_ports'].currentText(), baudrate) as serial_connection:
+                #print("got here!")
+                self.serial_connection = serial_connection
+                #self.serial_thread = connection.SerialReader(
+                #    self.serial_connection,
+                #    self.ids['readRateSpinbox'].value(),
+                #    self)
+                #self.serial_thread.data_ready.connect(self.update)
+                #print("FIRST: " + str(self.serial_connection))
+                handshake = connection.handshake(self.serial_connection)
+                self.log.v(_('CON_SERIAL_OK'))
+                self.log.i(_('CON_ARDUINO_SAYS') + handshake)
+        except connection.ConnectionError as err:
+            self.log.x(err, _('CON_SOL_SERIAL'))
+        print("SECOND: " + str(self.serial_connection))
+
+
+    def syncArduinoPorts(self):
+        """
+            Syncs the combobox for ports for new ports
+        """
+        self.ids['combobox_connected_ports'].clear()
+        self.ids['combobox_connected_ports'].addItems(self.getArduinoPorts())
+
+
+    def getArduinoPorts(self):
+        """
+            Sets up the combobox with ports connected with Arduino.
+        """
+        self.log.i(_('CON_PORTS'))
         try:
-            self.serial_connection = connection.openConnection(port)
-            handshake = connection.handshake(self.serial_connection)
-            self.log.v(_('CON_SERIAL_OK'))
-            self.log.i(_('CON_ARDUINO_SAYS') + handshake)
-        except Exception as err:
-            self.log.e(_('CON_SERIAL_ERR'), err)
-            print(err)
+            ports = connection.getPorts(self.system)
+            self.log.v(_('CON_OK_PORTS') + str(ports))
+        except connection.PortError as err:
+            self.log.x(err, _('CON_SOL_PORTS'))
+            return [_('NO_BOARD')]
+        return ports
 
 
+    def onReadStopButtonClick(self):
+        """
+            Button: activates (odd clicks) and interrupts (even clicks) receiving the data from arduino
+        """
+        if not self.is_reading:
+            try:
+                self.serial_connection = serial.Serial(
+                    self.ids['combobox_connected_ports'].currentText(),
+                    9600)
+                self.serial_thread = connection.SerialReader(
+                    self.serial_connection,
+                    self.ids['readRateSpinbox'].value(),
+                    self)
+                self.serial_thread.data_ready.connect(self.update)
+
+                self.serial_connection.write(b'\x01')
+
+                # wait for acknowledgement from Arduino for 5 seconds (timeoout)
+                timeout = time.time() + 5
+                while self.serial_connection.read() != b'\x06':
+                    if time.time() > timeout:
+                        raise connection.ConnectionTimeout(_('CON_ERR_TIMEOUT'))
+
+                # pin to read from
+                pin = 1
+                self.serial_connection.write(pin.to_bytes(pin, byteorder='little', signed=False))
+
+                self.is_reading = True
+                self.btPlayPause.setText("Stop")
+                self.serial_thread.start()
+            except connection.ConnectionError as err:
+                self.log.x(err)
+
+        else:
+            # Send command to Arduino to stop sending analog values
+            self.serial_connection.write(b'\x04')
+
+            self.btPlayPause.setText("Start")
+            self.is_reading = False
+            self.serial_thread.terminate() # Stop the serial reader thread
+
+
+    def setReadRate(self, rate):
+        self.serial_thread.rate = rate
+
+
+    def set_read_rate(self, rate):
+        self.serial_thread.rate = rate
+
+
+    ############################
+    # Inner classes
+    ############################
     class Logger(QTextEdit):
         """
-            NoiserGUI.Logger class to communicate with user
+            Class to handle communication w/ user through the Logger
         """
         def __init__(self, parent=None):
-            super(NoiserGUI.Logger, self).__init__(parent)
+            super().__init__(parent)
             self.setReadOnly(True)
 
-            self.error    = '<span style="color:#c0392b;">{}</span>'
-            self.warning  = '<span style="color:orange;">{}</span>'
-            self.valid    = '<span style="color:green;">{}</span>'
+            self.formats = {
+                'info': '{}',
+                'error': '<span style="color:#c0392b;">{}</span>',
+                'warning': '<span style="color:orange;">{}</span>',
+                'valid': '<span style="color:green;">{}</span>'
+            }
 
+        def _log(self, message, level='info'):
+            """
+                Logs message of the given level
+            """
+            formatted_message = self.formats[level].format(message)
+            log_message = QDateTime.currentDateTime().toString('[hh:mm:ss] ') + formatted_message
+            self.append(log_message)
 
-        def i(self, message):   # logs info messages
-            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + message
-            self.append(logMessage)
+        def i(self, message):
+            """
+                Logs info messages
+            """
+            self._log(message)
 
         def v(self, message):
-            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + message
-            self.append(self.valid.format(logMessage))
+            """
+                Logs validation and confirmation messages
+            """
+            self._log(message, 'valid')
 
-        def e(self, message, err):
-            logMessage = time.strftime("%H:%M:%S", time.localtime()) + ' ' + str(err) + ': ' + message
-            self.append(self.error.format(logMessage))
+        def e(self, message):
+            """
+                Logs error messages (no need to be exception)
+            """
+            self._log(message, 'error')
 
+        def x(self, err, solution=''):
+            """
+                Logs Exceptions messages and preferably provides a solution
+            """
+            message = type(err).__name__ + ': ' + str(err)
+            self._log(message, 'error')
+            if solution:
+                self.i(solution)
+    
+
+    ############################
+    # Event handling methods
+    ############################
     def update(self, value):
+        """
+            Updates the user interface on iterations of the Serial thread
+        """
         print(value)
+    
+    def closeEvent(self, event):
+        """
+            Disallows the window to be closed while Serial thread is running
+        """
+        if self.is_reading == False:
+            event.accept()
+        else:
+            self.log.e("Stop the Thread first! You wouldn't want to explode your expensive Raspberry PI")
+            event.ignore()
 
     def _createMainLayout(self):
         """
@@ -147,6 +271,11 @@ class NoiserGUI(QMainWindow):
         NoisrWidget.setLayout(containerMain)
         self.setCentralWidget(NoisrWidget)
 
+    def onBoardInfoClick(self):
+        factory.boardInfo()
+    
+    def onBoardCodeClick(self):
+        factory.boardCode('./noiserino/noiserino.ino')
 
     def onClick(self):
         pass
@@ -157,42 +286,11 @@ class NoiserGUI(QMainWindow):
         """
         self.log.i(_('CON_NEW'))
         self.log.i(_('CON_CHECKING_PORTS'))
-        self.getPorts()
+        self.getArduinoPorts()
         self.openConnection()
-
-    def onReadStopButtonClick(self):
-        print("test")
-        if not self.is_reading:
-            connection.startReadingPin(self, self.serial_thread.serial_connection, 0)
-        else:
-            connection.stopReadingPin(self, self.serial_thread.serial_connection, 0)
- 
-    def onRead2StopButtonClick(self):
-        if not self.is_reading:
-            self.stopReadingData()
-            self.btPlayPause.setText('PLAY')
-        else:
-            self.startReadingData()
-            self.btPlayPause.setText('PAUSE')
-
 
     def readPin(self, pin):
         pass#connect.listenToPin(self.serialConnection, 0, 1)
-
-    def getPorts(self):
-        """
-            Checks for ports with connected boards
-        """
-        ports = ['no board']
-        try:
-            ports = connection.getPorts(self.system)
-            self.log.v(_('CON_ARDUINO_OK') + str(ports))
-        except Exception as err:
-            self.log.e(_('CON_ARDUINO_ERR'), err)
-            print(err)
-        finally:
-            return ports
-
 
     def thresholdValidator(self):
         validator = QIntValidator()
@@ -224,10 +322,6 @@ class NoiserGUI(QMainWindow):
         else:
             self.startReadingData()
             self.btScheduledRead.setText('READING')
-
-    def setReadRate(self):
-        #self.serial_thread.rate = rate
-        pass
 
     def bt_plot_clicked(self):
         print(self.bt_plot.isChecked())
@@ -281,6 +375,16 @@ class NoiserGUI(QMainWindow):
         self.setWindowTitle(self.title)
 
         self.log('Stopped reading.')
+
+    ############################
+    # Utility Methods
+    ############################
+    def doNothing(self):
+        """
+            That's right: this function does nothing.
+        """
+        pass
+
 
     ## TODO IMPROVE THIS
     def setupEnvironment(self, path='./configs/toolbars.json'):

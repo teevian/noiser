@@ -1,7 +1,8 @@
 {
     "meta" : {
         "authors" : ["Telmo Vaz", "Rafael Conde"],
-        "version" : "1.0",
+        "phase" : "alpha",
+        "version" : 0.1,
         "license" : "Open Source"
     },
     "settings" : {

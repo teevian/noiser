@@ -3,6 +3,7 @@
 from msgid import egg
 import threading
 import os, time
+from msgid import _
 import random
 import serial
 import serial.tools.list_ports  # should pip install esptool (?)
@@ -31,7 +32,7 @@ delay = 1 / timeRate # make sure it is not zero!
 stop_flag = False
 
 ######################################################################
-# Classes and Threads
+# Classes, Exceptions and Threads
 ######################################################################
 
 class SerialReader(QThread):
@@ -39,23 +40,54 @@ class SerialReader(QThread):
         Opens the serial to read asynchronosusly
     """
     data_ready = pyqtSignal(str)
-    def __init__(self, _path, read_rate, parent=None):
+    def __init__(self, _ser, _rate, parent=None):
         super().__init__(parent)
-        self.serial_connection = serial.Serial(_path, 9600) ## ATTENTION TO THIS
-        self.read_rate = read_rate
+        self.ser = _ser
+        self.rate = _rate
 
     def run(self):
         while True:
-            if self.serial_connection.readable():
-                analog_value = self.serial_connection.readline().decode().strip()
-                # Emit a signal to update the GUI with the analog value
-                self.data_ready.emit(analog_value)
-            QThread.msleep(1000 // self.read_rate)
+            if self.ser.readable():
+                analog_value = self.ser.readline().decode().strip()
+                self.data_ready.emit(analog_value)  # emits signal to update the GUI with the analog value
+            QThread.msleep(1000 // self.rate)       # changes reading rate in real-time!
 
+class PortError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message)
+
+class ConnectionError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message)
+
+class ConnectionTimeout(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message)
 
 ######################################################################
 # Functions and utils
 ######################################################################
+
+def getPorts(system):
+    """
+        Shows ports whose connection is made with Arduino - MacOS and Linux only; Windows is for humanities majors
+    """
+    ports = []
+    if system.lower() == 'linux':       # Linux
+        ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
+    elif system.lower() == 'darwin':    # MacOS
+        ports = [   
+            port.device
+            for port in serial.tools.list_ports.comports()
+            if 'Arduino' in port.description and 'usbmodem' in port.device
+        ]
+    if not ports:
+        raise PortError('Board not connected')
+    return ports
+
 
 # TODO this function should return an integer; the string part should be handled on gui
 def handshake(connection):
@@ -69,7 +101,6 @@ def handshake(connection):
     if connection.readable():
         # readable is cool because it doesn't block I/O, as is_waiting does :)
         random_number = int(connection.readline().decode().strip())
-        # print(f"Random: {random_number}")
         return egg(int(random_number))
     else:
         return "Arduino is down"
@@ -108,24 +139,6 @@ def stopReadingPin(self, connection, port):
     self.btPlayPause.setText("Start")
     self.is_reading = False
     self.serial_thread.terminate() # Stop the serial reader thread
-
-
-def getPorts(system):
-    """
-        Shows ports whose connection is made with Arduino - MacOS and Linux only, Windows is for humanities majors
-    """
-    ports = []
-    if system.lower() == 'linux':       # Linux
-        ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
-    elif system.lower() == 'darwin':    # MacOS
-        ports = [   
-            port.device
-            for port in serial.tools.list_ports.comports()
-            if 'Arduino' in port.description and 'usbmodem' in port.device
-        ]
-    if not ports:
-        raise Exception('BoardNotFound')
-    return ports
 
 
 def openConnection(port):
@@ -171,3 +184,9 @@ CONTROLS = {
     "interrupt" : stopListenToPin,
     "test" : handshake
 }
+
+
+class PortError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message)

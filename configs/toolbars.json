@@ -59,21 +59,28 @@
                 "name": "Board Info",
                 "icon": "./data/icons/info_board.svg",
                 "status": "Info about the board",
-                "action": "onClick"
+                "action": "onBoardInfoClick"
             },
             {
                 "type": "button",
                 "name": "Connect",
                 "icon": "./data/icons/ic_info_connection.svg",
                 "status": "Connects to board",
-                "action": "onConnectButtonClick"                
+                "action": "onConnectButtonClick"
+            },
+            {
+                "type": "button",
+                "name": "Sync Ports",
+                "icon": "./data/icons/ic_sync_ports.svg",
+                "status": "Looks again for Arduino ports",
+                "action": "syncArduinoPorts"
             },
             {
                 "type": "combobox",
-                "@id" : "comboboxConnectedPorts",
+                "@id" : "combobox_connected_ports",
                 "name": "Items",
                 "status": "Select connected ports",
-                "action": "getPorts"
+                "action": "getArduinoPorts"
             },
             {
                 "type": "label",
@@ -87,15 +94,14 @@
                 "value" : "10",
                 "min" : "1",
                 "max" : "20",
-                "valueChanged" : "setReadRate",
-                "action" : "onClick"
+                "action" : "setReadRate"
             },
             {
                 "type": "button",
                 "name": "Board Code",
                 "icon": "./data/icons/ic_code.svg",
                 "status": "Arduino code",
-                "action": "onClick"
+                "action": "onBoardCodeClick"
             }
         ]
     },
@@ -130,12 +136,6 @@
                 "type": "lineEdit",
                 "width": "50",
                 "validator": "thresholdValidator"
-            },
-            {
-                "type" : "combobox",
-                "name": "Analyzer:",
-                "status": "Selects which PORT is to analyze",
-                "action": "getPorts"
             }
         ]
     },

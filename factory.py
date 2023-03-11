@@ -13,11 +13,12 @@ from PyQt5.QtWidgets import (
     QComboBox, QDialog, QTabWidget, QSizePolicy,
     QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
     QLineEdit, QPlainTextEdit, QMenuBar, QMenu, QToolBar,
-    QAction, QDoubleSpinBox, QCheckBox, QGridLayout
+    QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QFormLayout, QLayout
 )
 from PyQt5.QtGui import (
-    QIcon, QIntValidator
+    QIcon, QIntValidator, QPixmap
 )
+
 
 ######################################################################
 # Widgets and stuff
@@ -128,6 +129,121 @@ def Controllers(self):
     self.layoutControllers.addWidget(self.btRegister)
 
 
+def boardInfo():
+    dialog = QDialog()
+    dialog.setWindowTitle("Arduino Information")
+    dialog.setWindowModality(Qt.ApplicationModal)
+    dialog.setLayout(QVBoxLayout())
+
+    # create arduino information section
+    arduino_info_section = QGroupBox("Arduino Information")
+    arduino_info_section_layout = QFormLayout()
+    arduino_info_section_layout.setAlignment(Qt.AlignLeft)
+
+    # create image
+    arduino_image = QLabel()
+    arduino_pixmap = QPixmap("./data/icons/img_arduino_uno.png")
+    arduino_pixmap = arduino_pixmap.scaledToWidth(300)
+    arduino_image.setPixmap(arduino_pixmap)
+    arduino_image.setAlignment(Qt.AlignCenter)
+    arduino_info_section_layout.addRow(arduino_image)
+
+    # create arduino model label and value
+    arduino_model_label = QLabel("<b>Model:</b>")
+    arduino_model_value = QLabel("Arduino Uno")
+    arduino_model_label.setAlignment(Qt.AlignLeft)
+    arduino_model_value.setAlignment(Qt.AlignLeft)
+    arduino_info_section_layout.addRow(arduino_model_label, arduino_model_value)
+
+    # create arduino memory label and value
+    arduino_memory_label = QLabel("<b>Memory:</b>")
+    arduino_memory_value = QLabel("32 KB Flash, 2 KB SRAM, 1 KB EEPROM")
+    arduino_memory_label.setAlignment(Qt.AlignLeft)
+    arduino_memory_value.setAlignment(Qt.AlignLeft)
+    arduino_info_section_layout.addRow(arduino_memory_label, arduino_memory_value)
+
+    # create arduino ports label and value
+    arduino_ports_label = QLabel("<b>Ports:</b>")
+    arduino_ports_value = QLabel("1 x USB, 1 x Serial")
+    arduino_ports_label.setAlignment(Qt.AlignLeft)
+    arduino_ports_value.setAlignment(Qt.AlignLeft)
+    arduino_info_section_layout.addRow(arduino_ports_label, arduino_ports_value)
+
+    arduino_info_section.setLayout(arduino_info_section_layout)
+
+    # create connection information section
+    connection_info_section = QGroupBox("Connection Information")
+    connection_info_section_layout = QFormLayout()
+    connection_info_section_layout.setAlignment(Qt.AlignLeft)
+
+    # create connection type label and value
+    connection_type_label = QLabel("<b>Type:</b>")
+    connection_type_value = QLabel("Serial")
+    connection_type_label.setAlignment(Qt.AlignLeft)
+    connection_type_value.setAlignment(Qt.AlignLeft)
+    connection_info_section_layout.addRow(connection_type_label, connection_type_value)
+
+    # create last connection time label and value
+    last_connection_time_label = QLabel("<b>Last Connection Time:</b>")
+    last_connection_time_value = QLabel("2022-03-12 10:30:00")
+    last_connection_time_label.setAlignment(Qt.AlignLeft)
+    last_connection_time_value.setAlignment(Qt.AlignLeft)
+    connection_info_section_layout.addRow(last_connection_time_label, last_connection_time_value)
+
+    connection_info_section.setLayout(connection_info_section_layout)
+
+    # add sections to dialog layout
+    dialog.layout().addWidget(arduino_info_section)
+    dialog.layout().addWidget(connection_info_section)
+
+    # create close button
+    close_button = QPushButton("Close")
+    close_button.setMaximumWidth(100)
+    close_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+    close_button.clicked.connect(dialog.accept)
+
+    # add close button to dialog layout
+    dialog.layout().addWidget(close_button, alignment=Qt.AlignRight)
+
+    # show dialog
+    dialog.exec_()
+
+
+def boardCode(path='./noiserino/noiserino.ino'):
+    with open(path, "r") as f:
+        code = f.read()
+
+    dialog = QDialog()
+    dialog.setWindowTitle("Noiserino code:")
+    dialog.setWindowModality(Qt.ApplicationModal)
+    dialog.resize(800, 600)
+
+    layout = QVBoxLayout()
+    dialog.setLayout(layout)
+
+    # create title label for code section
+    code_label = QLabel("Noiserino code:")
+    code_label.setAlignment(Qt.AlignLeft)
+    layout.addWidget(code_label)
+
+    # create PlainTextEdit with the code
+    code_editor = QPlainTextEdit()
+    code_editor.setPlainText(code)
+    layout.addWidget(code_editor)
+
+    # create close button
+    close_button = QPushButton("Close")
+    close_button.setMaximumWidth(100)
+    close_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+    close_button.clicked.connect(dialog.accept)
+
+    # add close button to dialog layout
+    layout.addWidget(close_button, alignment=Qt.AlignRight)
+
+    # show dialog
+    dialog.exec_()
+
+
 ######################################################################
 # Menus and Bars
 ######################################################################
@@ -189,7 +305,7 @@ def ToolBar(self, toolbarModel, name):
     }[position],
         toolbar)
 
-    # TODO create an exception AND OPTIMIZE THIS CODE BEFORE PROJECT SUBMISSION TODO TODO TODO TODO 
+    # TODO create an exception AND OPTIMIZE THIS CODE BEFORE PROJECT SUBMISSION TODO TODO TODO TODO
     # toolbar factory from lambda dictionary
     for action in actions:
         if action['type'] == 'button':
@@ -203,11 +319,11 @@ def ToolBar(self, toolbarModel, name):
             toolbar.addWidget(QLabel(action['text']))
         elif action['type'] == 'combobox':
             comboBoxPorts = QComboBox()
-            itemsFunction = getattr(self, action['action'])
+            function = getattr(self, action['action'])
             if '@id' in action:
                 id = action['@id']
                 self.ids[id] = comboBoxPorts
-            items = itemsFunction()
+            items = function()
             comboBoxPorts.addItems(items)
             toolbar.addWidget(comboBoxPorts)
         elif action['type'] == 'spinbox':
@@ -215,7 +331,8 @@ def ToolBar(self, toolbarModel, name):
             spinBox.setStatusTip(action['status'])
             spinBox.setValue(int(action['value']))
             spinBox.setRange(int(action['min']), int(action['max']))
-            itemsFunction = getattr(self, action['action'])
+            function = getattr(self, action['action'])
+            spinBox.valueChanged.connect(function)
             if '@id' in action:
                 id = action['@id']
                 self.ids[id] = spinBox
