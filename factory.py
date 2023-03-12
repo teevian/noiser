@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QComboBox, QDialog, QTabWidget, QSizePolicy,
     QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
     QLineEdit, QPlainTextEdit, QMenuBar, QMenu, QToolBar,
-    QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QFormLayout, QLayout
+    QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QFormLayout, QLayout, QButtonGroup
 )
 from PyQt5.QtGui import (
     QIcon, QIntValidator, QPixmap
@@ -56,20 +56,25 @@ def AnalyzerTab(layoutType, widget):
 
 def AnalogPinChoicer(self):
     """
-        Factors a group for radio pins
+    Factors a group for radio pins
     """
-    layoutGridPins = QGridLayout()
     self.groupPinChoice = QGroupBox('Analog PIN')
+    self.groupbox = QButtonGroup()
 
+    layoutGridPins = QGridLayout(self.groupPinChoice)
     self.analogPin = []
     for i in range(6):
-        row, col = i // 3, i % 3    # organizes in a 2x3 grid
+        row, col = divmod(i, 3)    # organizes in a 2x3 grid
         btRadio = QRadioButton(f'A{i}')
+        self.groupbox.addButton(btRadio, i)
         layoutGridPins.addWidget(btRadio, row, col)
         self.analogPin.append(btRadio)
 
     self.analogPin[0].setChecked(True)
     self.groupPinChoice.setLayout(layoutGridPins)
+    self.groupbox.buttonClicked.connect(self.onAnalogPinChanged)
+    self.onAnalogPinChanged()   # to setup environment
+
 
 
 def Scheduler(self):
@@ -304,7 +309,7 @@ def ToolBar(self, toolbarModel, name):
         toolbar)
 
     # TODO create an exception AND OPTIMIZE THIS CODE BEFORE PROJECT SUBMISSION TODO TODO TODO TODO
-    # toolbar factory from lambda dictionary
+    # idea: make toolbar factory from lambda dictionary maybe?
     for action in actions:
         if action['type'] == 'button':
             button = QAction(QIcon(action['icon']), action['name'], self)
@@ -316,24 +321,36 @@ def ToolBar(self, toolbarModel, name):
         elif action['type'] == 'label':
             toolbar.addWidget(QLabel(action['text']))
         elif action['type'] == 'combobox':
-            comboBoxPorts = QComboBox()
-            function = getattr(self, action['action'])
+            comboBox = QComboBox()
             if '@id' in action:
                 id = action['@id']
-                self.ids[id] = comboBoxPorts
-            items = function()
-            comboBoxPorts.addItems(items)
-            toolbar.addWidget(comboBoxPorts)
+                self.ids[id] = comboBox
+            if 'items' in action:
+                comboBox.addItems(action['items'])
+            elif 'action' in action:
+                function = getattr(self, action['action'])
+                items = function()
+                comboBox.addItems(items)
+            if 'currentIndexSetChanged' in action:
+                comboBox.currentIndexChanged.connect(getattr(self, action['currentIndexSetChanged']))
+            toolbar.addWidget(comboBox)
         elif action['type'] == 'spinbox':
             spinBox = QSpinBox()
             spinBox.setStatusTip(action['status'])
             spinBox.setValue(int(action['value']))
-            spinBox.setRange(int(action['min']), int(action['max']))
+            if 'min' in action:
+                spinBox.setMinimum(int(action['min']))
+            if 'max' in action:
+                spinBox.setMaximum(int(action['max']))
             function = getattr(self, action['action'])
             spinBox.valueChanged.connect(function)
             if '@id' in action:
                 id = action['@id']
                 self.ids[id] = spinBox
+            if 'setPrefix' in action:
+                spinBox.setPrefix(action['setPrefix'])
+            if 'setSuffix' in action:
+                spinBox.setSuffix(action['setSuffix'])
             toolbar.addWidget(spinBox)
         elif action['type'] == 'lineEdit':
             editLine = QLineEdit()

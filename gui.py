@@ -3,12 +3,16 @@
 import json, time, os, serial
 import pyqtgraph as pg
 import factory, connection
+import random
+import utils
 
+import numpy as np
+from collections import deque
 from platform import system
 from msgid import _, egg
 from events import *
 from PyQt5.QtCore import (
-        QSize, Qt, pyqtSlot, QDateTime
+        QSize, Qt, pyqtSlot, QDateTime, QTimer, QTime
         )
 from PyQt5.QtWidgets import (
         QApplication, QMainWindow, QPushButton,
@@ -22,6 +26,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import (
         QIcon, QIntValidator, QColor
         )
+
 
 ######################################################################
 # PyQt window for a Noisr instance
@@ -41,18 +46,22 @@ class NoiserGUI(QMainWindow):
             Sets up the layout and user interface
         """
         ## window setup
-        window = configs['main_window']
-        meta = configs['meta']
+        window  = configs['main_window']
+        meta    = configs['meta']
 
         self.setupEnvironment()
 
-        self.ICON_SIZE = QSize(window['ic_size'], window['ic_size'])
-        self.filename = 'instance_name.IAD'
-        self.is_reading = False
+        self.name       = meta['name']
+        self.filename   = utils.getFunName(meta['extension'], '_')
+        self.title_canonical = f"{self.name} {meta['version']} {meta['dev_phase']}"
+        self.title      = f'{self.title_canonical} — {self.filename}'
 
-        self.title = window['title']
-        self.canonical_title = self.title + meta['version'] + ' ' + meta['dev_phase']
-        self.setWindowTitle(self.canonical_title)
+        self.ICON_SIZE  = QSize(window['ic_size'], window['ic_size'])
+        self.NO_BOARD   = _('NO_BOARD')
+        self.is_reading = False
+        self.is_saved   = False
+
+        self.setWindowTitle(self.title)
         self.setWindowIcon(QIcon(window['icon']))
         self.resize(QSize(window['width'], window['height']))
 
@@ -64,35 +73,53 @@ class NoiserGUI(QMainWindow):
         factory.MenuBar(self, 'path to menu file')
         factory.StatusBar(self, self.filename)
         factory.Noter(self, configs['notes_colors'])
+
+        self.createAnalyzer()
         factory.AnalogPinChoicer(self)
         factory.Scheduler(self)
         factory.Controllers(self)
 
-        self.createAnalyzer()
         self._createMainLayout()
 
         self.log.i(_('ENV_OK'))
 
+        self.getArduinoPorts()
         self.onConnectButtonClick()
 
-    # handshake
+
+    def setPlotterRange(self):
+        """
+            Changes scale of the plotter according to max and min values
+        """
+        self.Yscale_min = self.ids['Yscale_min'].value()
+        self.Yscale_max = self.ids['Yscale_max'].value()
+
+        self.ids['Yscale_min'].setMaximum(self.Yscale_max - 1)
+        self.ids['Yscale_max'].setMinimum(self.Yscale_min + 1)
+
+        self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
+
+
     def onConnectButtonClick(self, baudrate=9600):
         """
             Opens connection to ackwonledge Arduino
         """
-        if self.is_reading: # an if a day keeps threads away
+        if self.is_reading:
             self.log.e(_('ERR_THREAD_RUNNING'))
             return
-        else:
-            try:
-                # the 'with' ensures that the connection is closed: https://superfastpython.com/thread-context-manager/
-                with serial.Serial(self.ids['combobox_connected_ports'].currentText(), baudrate) as serial_connection:
+
+        try:
+            port = self.ids['combobox_connected_ports'].currentText()
+            if port != self.NO_BOARD:
+                with serial.Serial(port, baudrate) as serial_connection:
                     self.serial_connection = serial_connection
                     handshake = connection.handshake(self.serial_connection)
                     self.log.v(_('CON_SERIAL_OK'))
                     self.log.i(_('CON_ARDUINO_SAYS') + handshake)
-            except connection.ConnectionError as err:
-                self.log.x(err, _('CON_SOL_SERIAL'))
+            else:
+                self.log.e(_('CON_ERR_PORTS'))
+        except (connection.ConnectionError, serial.serialutil.SerialException) as err:
+            self.log.x(err, _('CON_SOL_PORTS'))
 
 
     def syncArduinoPorts(self):
@@ -119,7 +146,7 @@ class NoiserGUI(QMainWindow):
 
     def onReadStopButtonClick(self):
         """
-            Button: activates (odd clicks) and interrupts (even clicks) receiving the data from arduino
+            Activates (odd clicks) and interrupts (even clicks) receiving the data from arduino
         """
         if not self.is_reading:
             try:
@@ -129,7 +156,7 @@ class NoiserGUI(QMainWindow):
                     self.serial_connection,
                     self.ids['readRateSpinbox'].value(),
                     self)
-                self.serial_thread.data_ready.connect(self.update)
+                self.serial_thread.data_ready.connect(self.update_plot)
 
                 self.serial_connection.write(b'\x01')
 
@@ -139,49 +166,39 @@ class NoiserGUI(QMainWindow):
                     if time.time() > timeout:
                         raise connection.ConnectionTimeout(_('CON_ERR_TIMEOUT'))
 
-                # pin to read from analog checkbox
-                pin = 1
+                pin = self.reading_pin
                 self.serial_connection.write(pin.to_bytes(pin, byteorder='little', signed=False))
 
                 self.serial_thread.start()
-
-                self.startReadingSetup()
-            except connection.ConnectionError as err:
+                self.__startReadingSetup()
+            except (connection.ConnectionError, serial.SerialException) as err:
                 self.log.x(err)
-
         else:
             # Send command to Arduino to stop sending analog values
             self.serial_connection.write(b'\x04')
 
             self.serial_thread.terminate()
-            self.stopReadingSetup()
+            self.__stopReadingSetup()
+        
+        self.is_reading = not self.is_reading   # toggles every time button is clicked
 
-    def startReadingSetup(self):
-        self.is_reading = True
+
+    def __startReadingSetup(self):
         self.log.i(_('READ_START'))
 
         self.btPlayPause.setText("Stop")
         self.statusbar.setStyleSheet('background-color: rgb(118, 178, 87);')
         self.statusbar.showMessage(_('STATUSBAR_READ_START'), 1000)
-        self.setWindowTitle(self.title + ' (🟢 reading...)')
+        self.setWindowTitle(f'{self.name} (🟢 reading...)')
 
 
-    def stopReadingSetup(self):
-        self.is_reading = False
+    def __stopReadingSetup(self):
         self.log.i(_('READ_STOP'))
 
         self.btPlayPause.setText('Start')
         self.statusbar.setStyleSheet('background-color: rgb(0, 122, 204);')
         self.statusbar.showMessage(_('STATUSBAR_READ_STOP'), 1000)
-        self.setWindowTitle(self.canonical_title)
-
-    def setReadRate(self, rate):
-        self.serial_thread.rate = rate
-
-
-    def set_read_rate(self, rate):
-        self.serial_thread.rate = rate
-
+        self.setWindowTitle(self.title)
 
     ############################
     # Inner classes
@@ -240,21 +257,19 @@ class NoiserGUI(QMainWindow):
     ############################
     # Event handling methods
     ############################
-    def update(self, value):
-        """
-            Updates the user interface on iterations of the Serial thread
-        """
-        print(value)
-    
+ 
     def closeEvent(self, event):
         """
             Disallows the window to be closed while Serial thread is running
         """
-        if self.is_reading == False:
+        #self.serial_reader.stop()
+        #self.serial_reader.wait()
+        if not self.is_reading:
             event.accept()
         else:
             self.log.e(_('ERR_THREAD_RUNNING'))
             event.ignore()
+
 
     def _createMainLayout(self):
         """
@@ -285,49 +300,39 @@ class NoiserGUI(QMainWindow):
         NoisrWidget.setLayout(containerMain)
         self.setCentralWidget(NoisrWidget)
 
+
     def onBoardInfoClick(self):
         factory.boardInfoDialog()
     
+
     def onBoardCodeClick(self):
         factory.boardCodeDialog('./noiserino/noiserino.ino')
 
+
     def onClick(self):
         pass
+
 
     def thresholdValidator(self):
         validator = QIntValidator()
         validator.setRange(-25, 25)
         return validator
 
+
     def btPlayPauseOnToggled(self, pushed):
         if pushed:
             self.btPlayPause.setIcon(QIcon('./data/icons/warning.svg'))
         else:
             self.btPlayPause.setIcon(QIcon('./data/icons/target.svg'))
-    
-
-    # TODO APPLY TO A TOGGLE
-    def btLiveReadPressed(self):
-        self.startReadingData()
-        self.btLiveRead.setText('READING')
 
 
-    def btLiveReadReleased(self):
-        self.stopReadingData()
-        self.btLiveRead.setText('LIVE')
-
-
-    def btScheduledClicked(self):
-        if self.isReading :
-            self.stopReadingData()
-            self.btScheduledRead.setText('SCHEDULE')
-        else:
-            self.startReadingData()
-            self.btScheduledRead.setText('READING')
-
-    def bt_plot_clicked(self):
-        print(self.bt_plot.isChecked())
-        self.bt_plot.setEnabled(False)
+    def onAnalogPinChanged(self):
+        """
+            Sets up environment when the user chooses another analog pin to read from
+        """
+        self.reading_pin = self.groupbox.checkedId()
+        self.plotter.setTitle(f'Data from PIN A{self.reading_pin}')
+        self.statusbar.showMessage(_('STATUSBAR_PIN_CHANGED') + str(self.reading_pin), 1000)
 
 
     def createAnalyzer(self):
@@ -338,52 +343,74 @@ class NoiserGUI(QMainWindow):
         self.analyzer = QTabWidget(movable=True, tabPosition=QTabWidget.South)
         self.analyzer.setStyleSheet("QTabWidget::pane { border: 0; }")
 
-        ## plot
-        plot = pg.PlotWidget()
-        x, y = range(20), [3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7, 3, 4, 2, 4, 7]
-        plot.plot(x, y)
-        plot.setAspectLocked(lock=True, ratio=1)
+
+        ## plotter
+        self.plotter = pg.PlotWidget()
+        self.plotter.setLabel('left', 'Voltage', units='V', size='18pt')
+        self.plotter.setLabel('bottom', 'Time', units='s', size='18pt')
+        self.plotter.showGrid(x=True, y=True, alpha=0.7)
+        self.plotter.setLimits(xMin = 0, yMin = -12, yMax = 12)
+        self.plotter.setAspectLocked(lock=True, ratio=1)
+        self.setPlotterRange()
+
+        # TODO CONSIDERATIONS for 'essential mode
+        #self.plotter.setDownsampling(auto=True)
+
+        self.data = deque(maxlen=13)    # points before stacking out
+        self.time = np.zeros(1)
+        self.voltage = np.zeros(1)
+
+        # Plot the initial data
+        self.curve = self.plotter.plot(self.time, self.voltage, pen='g', width=5, name='Voltage')
 
         ## table
         table = QTableWidget(20, 4)
         table.setStyleSheet('background-color: rgb(0, 0, 0);')
         table.horizontalHeader().setStretchLastSection(True)
-        table.setHorizontalHeaderLabels(['Time(s)', 'Voltage(V)', 'Moving Average', 'Comment'])
+        table.setHorizontalHeaderLabels(['Time', 'Voltage', 'Moving Average', 'Comment'])
         table.verticalHeader().setVisible(False)
 
         ## generates tabs compatible with analyzer board
-        tabPlot = factory.AnalyzerTab(QHBoxLayout, plot)
+        tabPlot = factory.AnalyzerTab(QHBoxLayout, self.plotter)
         tabTable = factory.AnalyzerTab(QHBoxLayout, table)
   
-        self.analyzer.addTab(tabPlot, QIcon('./data/icons/ic_read.svg'), 'Plot')
-        self.analyzer.addTab(tabTable, QIcon('./data/icons/ic_sum'), 'Table')
+        self.analyzer.addTab(tabPlot, QIcon('./data/icons/ic_read.svg'), 'Oscilloscope')
+        self.analyzer.addTab(tabTable, QIcon('./data/icons/ic_sum'), 'Spreadsheet')
 
 
-    def startReading(self):
+    def update_plot(self, new_voltage):
         """
-            Change program mode to start reading data
+            Updates the plot with data
         """
-        self.isReading = True
-        self.setWindowTitle(self.title + ' (🟢 reading...)')
+        new_time = self.time[-1] + (1 / self.serial_thread.rate)
         
-        self.log('Started reading...', 'record')
+        self.data.append((new_time, new_voltage))
+        print(self.data)
+
+        self.time, self.voltage = zip(*self.data)
+        #print(str(self.time) + ' > ' + str(self.voltage))
+
+        self.curve.setData(self.time, self.voltage)
+        self.plotter.setXRange(self.time[-20], self.time[-1], padding=0)
+        self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
+        #self.label.setPos(self.x_data[-1], 1)
+        #self.label.setText(f"Y = {self.y_data[-1]:.2f}")
 
 
-    def stopReading(self):
+    def setReadRate(self, rate):
         """
-            Change program mode to stop reading data
+            Changes the read rate from arduino
         """
-        self.isReading = False
-        self.setWindowTitle(self.title)
+        if self.is_reading:
+            self.serial_thread.rate = rate
 
-        self.log('Stopped reading.')
 
     ############################
     # Utility Methods
     ############################
     def doNothing(self):
         """
-            That's right: this function does nothing.
+            That's right: this function does nothing :)
         """
         pass
 

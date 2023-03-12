@@ -1,32 +1,15 @@
-import os
+import random
+import re
 
-def searchForFile(folder, file):
-    return [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
+def getFunName(extension, separator=' '):
+    """
+        Returns a funny filename
+    """
+    if not re.match(r"[.][a-zA-Z]+$", extension):
+        raise ValueError("Invalid extension format, must be in the format '.[A-z]'")
 
-def icon(iconName):
-    """Returns the relative path of the icon from its name"""
-    return './icons/ic_' + iconName + '.svg'
+    NAME    = ['Einstein', 'Feynman', 'Schrödinger', 'Newton', 'Hawking', 'Tesla', 'Curie', 'Bohr', 'Hertz', 'Planck']
+    VERB    = ['tickles', 'hugs', 'whispers_to', 'dances_with', 'paints', 'sings_to', 'high_fives', 'pets', 'massages', 'plays_fetch_with']
+    SUBJECT = ['yoga', 'avocados', 'paperclips', 'cactus', 'cookies', 'poetry', 'puzzles', 'karaokes', 'sushi', 'photons', 'lasers']
 
-
-class USBWatcher(QObject):
-    deviceAdded = pyqtSignal(str)
-    deviceRemoved = pyqtSignal(str)
-    
-    def __init__(self):
-        super().__init__()
-        self._udev = pyudev.Context()
-        self._monitor = pyudev.Monitor.from_netlink(self._udev)
-        self._monitor.filter_by(subsystem='usb')
-        self._observer = pyudev.MonitorObserver(self._monitor, self._onDeviceEvent)
-        
-    def start(self):
-        self._observer.start()
-        
-    def stop(self):
-        self._observer.stop()
-        
-    def _onDeviceEvent(self, action, device):
-        if action == 'add':
-            self.deviceAdded.emit(device.device_path)
-        elif action == 'remove':
-            self.deviceRemoved.emit(device.device_path)
+    return f'{random.choice(NAME)}{separator}{random.choice(VERB)}{separator}{random.choice(SUBJECT)}{extension}'

@@ -12,6 +12,7 @@ __MAP_MESSAGES = {
         "EASTER_EGG_LUIS_MELO_GREETING" : "Viva!",
 
         "STATUSBAR_READ_START" : "Reading!",
+        "STATUSBAR_PIN_CHANGED" : "Connected to pin ",
 
         "CON_NEW"   : "Establishing a new connection... ",
         "CON_CHECKING_PORTS" : "Checking for Arduino connected ports... ",

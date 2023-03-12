@@ -1,30 +1,30 @@
 {
     "meta" : {
-        "authors" : ["Telmo Vaz", "Rafael Conde"],
+        "name"      : "noisr",
+        "authors"   : ["Telmo Viana Vaz"],
         "dev_phase" : "(alpha)",
-        "version" : "v1.0",
-        "license" : "Open Source"
+        "version"   : "v.1",
+        "license"   : "Open Source",
+        "extension" : ".iad"
     },
     "settings" : {
-        "std_filename" : "tesla.IAD",
-        "std_performance" : "high"
+        "performance" : "high"
     },
     "main_window" : {
-        "title" : "noisr",
-        "width" : 1000,
-        "height" : 800,
-        "icon" : "./data/icons/ic_avicon.svg",
-        "ic_size" : 24
+        "width"     : 1000,
+        "height"    : 800,
+        "icon"      : "./data/icons/ic_avicon.svg",
+        "ic_size"   : 24
     },
     "env_paths" : {
-        "toolbars" : "./configs/toolbars.json",
-        "logger" : "./configs/logger.json",
-        "icons" : "./data/icons/"
+        "toolbars"  : "./configs/toolbars.json",
+        "logger"    : "./configs/logger.json",
+        "icons"     : "./data/icons/"
     },
     "notes_colors": {
-        "wheat": "#F5DEB3",
-        "lightcyan": "#B5EAEA",
-        "mauve": "#E0B0FA",
-        "olivedrab": "#9AC48A"
+        "wheat"     : "#F5DEB3",
+        "lightcyan" : "#B5EAEA",
+        "mauve"     : "#E0B0FA",
+        "olivedrab" : "#9AC48A"
     }
 }

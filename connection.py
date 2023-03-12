@@ -27,9 +27,6 @@ IAD_PROTOCOL = {            # https://theasciicode.com.ar
     'ERROR'     : b'\x21'   # NAK: exclaim(error) special character
 }
 
-timeRate = 10
-delay = 1 / timeRate # make sure it is not zero!
-stop_flag = False
 
 ######################################################################
 # Classes, Exceptions and Threads
@@ -39,7 +36,7 @@ class SerialReader(QThread):
     """
         Opens the serial to read asynchronosusly
     """
-    data_ready = pyqtSignal(str)
+    data_ready = pyqtSignal(float)
     def __init__(self, _ser, _rate, parent=None):
         super().__init__(parent)
         self.ser = _ser
@@ -49,8 +46,8 @@ class SerialReader(QThread):
         while True:
             if self.ser.readable():
                 analog_value = self.ser.readline().decode().strip()
-                self.data_ready.emit(analog_value)  # emits signal to update the GUI with the analog value
-            QThread.msleep(1000 // self.rate)       # changes reading rate in real-time!
+                self.data_ready.emit(float(analog_value))
+            QThread.msleep(1000 // self.rate)   # changes reading rate in real-time!
 
 class PortError(Exception):
     def __init__(self, message):
