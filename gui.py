@@ -60,6 +60,7 @@ class NoiserGUI(QMainWindow):
         self.NO_BOARD   = _('NO_BOARD')
         self.is_reading = False
         self.is_saved   = False
+        self.serial_connection = None
 
         self.setWindowTitle(self.title)
         self.setWindowIcon(QIcon(window['icon']))
@@ -167,7 +168,7 @@ class NoiserGUI(QMainWindow):
                         raise connection.ConnectionTimeout(_('CON_ERR_TIMEOUT'))
 
                 pin = self.reading_pin
-                self.serial_connection.write(pin.to_bytes(pin, byteorder='little', signed=False))
+                self.serial_connection.write(pin.to_bytes(1, byteorder='little', signed=False))
 
                 self.serial_thread.start()
                 self.__startReadingSetup()
@@ -342,7 +343,6 @@ class NoiserGUI(QMainWindow):
         ## tab container and style
         self.analyzer = QTabWidget(movable=True, tabPosition=QTabWidget.South)
         self.analyzer.setStyleSheet("QTabWidget::pane { border: 0; }")
-
 
         ## plotter
         self.plotter = pg.PlotWidget()
