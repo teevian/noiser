@@ -217,23 +217,20 @@
             },
             {
                 "type": "button",
-                "name": "Maxima and Minima",
-                "icon": "./data/icons/plot_peaktopeak.svg",
-                "status": "Shows maxima and minima for the signal",
-                "action": "doNothing"
-            },
-            {
-                "type": "button",
-                "name": "Measures",
-                "icon": "./data/icons/plot_measures.svg",
-                "status": "Shows maximum and minimum for the signal",
-                "action": "doNothing"
-            },
-            {
-                "type": "button",
                 "name": "Threshold",
-                "icon": "./data/icons/plot_tolerance.svg",
-                "status": "Shows threshold for the signal",
+                "icon": "./data/icons/ic_threshold.svg",
+                "setCheckable" : "True",
+                "triggered" : "toggleThreshold",
+                "status": "Plots the threshold reference",
+                "action": "doNothing"
+            },
+            {
+                "type": "button",
+                "name": "Clamp function",
+                "icon": "./data/icons/ic_clamp_function.svg",
+                "status": "Plots the clamp function of the signal having threshold as reference",
+                "setCheckable" : "True",
+                "triggered" : "toggleClampFunction",
                 "action": "doNothing"
             }
         ]

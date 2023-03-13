@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
         QComboBox, QDialog, QTabWidget, QSizePolicy,
         QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
         QLineEdit, QPlainTextEdit, QMenuBar, QMenu, QToolBar,
-        QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QTextEdit
+        QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QTextEdit, QTableWidgetItem
         )
 from PyQt5.QtGui import (
         QIcon, QIntValidator, QColor
@@ -338,6 +338,19 @@ class NoiserGUI(QMainWindow):
         validator.setRange(-25, 25)
         return validator
 
+    def toggleThreshold(self, checked):
+        if checked:
+            self.threshold_line.show()
+        else:
+            self.threshold_line.hide()
+
+
+    def toggleClampFunction(self, checked):
+        if checked:
+            self.clamp_function.show()
+        else:
+            self.clamp_function.hide()
+
 
     def btPlayPauseOnToggled(self, pushed):
         if pushed:
@@ -385,15 +398,20 @@ class NoiserGUI(QMainWindow):
 
         deque_len = 50
         self.data_queue = deque(maxlen=deque_len)
+        self.data_voltages_queue_clamp = deque(maxlen=deque_len)
+        #self.data_queue_moving_average = deque(maxlen=deque_len +2)
         self.data_voltages_queue = deque(maxlen=deque_len)   # optimizing for speed
 
-        self.time = np.zeros(deque_len)
-        self.voltage = np.zeros(deque_len)
+        self.times = np.zeros(deque_len)
+        self.voltages = np.zeros(deque_len)
 
-        # Plot the initial data
-        self.signal_plot = self.plotter.plot(self.time, self.voltage, pen='g', width=5, name='Voltage')
+        ## graphs and lines to show
+        self.signal = self.plotter.plot(self.times, self.voltages, pen='g', width=5, name='Voltage')
+        self.clamp_function = self.plotter.plot(self.times, self.voltages, pen='y', width=2, name='Clamp Function')
+        #self.average_function = self.plotter.plot(self.times, self.voltages, pen='w', width=2, name='Moving Average')
+
         self.threshold_line = pg.InfiniteLine(
-            angle=0, movable=True, # TODO enable user to move the threshold - sync with qdoublespinbox
+            angle=0, movable=True,
             pen=pg.mkPen(color='r',
             width=3,
             style=Qt.DashLine))
@@ -402,16 +420,18 @@ class NoiserGUI(QMainWindow):
         self.threshold_line.setPos(float(self.ids['threshold_reference'].value()))
         self.plotter.addItem(self.threshold_line)
 
+        self.setThreshold()
+        
         ## table
-        table = QTableWidget(20, 4)
-        table.setStyleSheet('background-color: rgb(0, 0, 0);')
-        table.horizontalHeader().setStretchLastSection(True)
-        table.setHorizontalHeaderLabels(['Time', 'Voltage', 'Moving Average', 'Comment'])
-        table.verticalHeader().setVisible(False)
+        self.table = QTableWidget(0, 4)
+        self.table.setStyleSheet('background-color: rgb(0, 0, 0);')
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setHorizontalHeaderLabels(['Time', 'Voltage', 'Moving Average', 'Comment'])
+        self.table.verticalHeader().setVisible(False)
 
         ## generates tabs compatible with analyzer board
         tabPlot = factory.AnalyzerTab(QHBoxLayout, self.plotter)
-        tabTable = factory.AnalyzerTab(QHBoxLayout, table)
+        tabTable = factory.AnalyzerTab(QHBoxLayout, self.table)
   
         self.analyzer.addTab(tabPlot, QIcon('./data/icons/ic_read.svg'), 'Oscilloscope')
         self.analyzer.addTab(tabTable, QIcon('./data/icons/ic_sum'), 'Spreadsheet')
@@ -421,23 +441,40 @@ class NoiserGUI(QMainWindow):
         """
             Updates the plot with data
         """
-        new_time = self.time[-1] + (1 / self.serial_thread.rate)
+        new_time = self.times[-1] + (1 / self.serial_thread.rate)
 
         self.data_queue.append((new_time, new_voltage))
+        self.data_voltages_queue_clamp.append(self.clampValue(new_voltage))
         self.data_voltages_queue.append(new_voltage)
 
         #print(str(self.time) + ' > ' + str(self.voltage))
-        self.time, self.voltage = zip(*self.data_queue)
+        self.times, self.voltages = zip(*self.data_queue)
 
         if self.checkStabilization() != self.is_signal_stabilized:
             self.toggleStabilization()
-    
-        self.signal_plot.setData(self.time, self.voltage)
+
+        self.signal.setData(self.times, self.voltages)
+        self.clamp_function.setData(self.times, self.data_voltages_queue_clamp)
+
         self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
-        self.plotter.setXRange(self.time[-20], self.time[-1], padding=0)
+        self.plotter.setXRange(self.times[-20], self.times[-1], padding=0)
         #self.label.setPos(self.x_data[-1], 1)
         #self.label.setText(f"Y = {self.y_data[-1]:.2f}")
 
+        ## updates table
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        self.table.setItem(row, 0, QTableWidgetItem(str(round(new_time, 2))))
+        self.table.setItem(row, 1, QTableWidgetItem(str(new_voltage)))
+        self.table.scrollToBottom()
+
+
+    def moving_average(self, n=3):
+        cumulative_sum = np.cumsum(np.insert(self.data_voltages_queue, 0, 0))
+        return (cumulative_sum[n:] - cumulative_sum[:-n]) / float(n)
+
+    def clampValue(self, value):
+        return self.threshold_reference if value >= self.threshold_reference else 0
 
     def updateThresholdSpinBox(self):
         """
@@ -454,16 +491,15 @@ class NoiserGUI(QMainWindow):
         self.threshold_line.setPos(new_threshold)
         self.threshold_reference = new_threshold
 
-
     def toggleStabilization(self):
         """
             Updates the GUI and the curve according to stabilization change
         """
         if self.is_signal_stabilized:
-            self.signal_plot.setPen(pg.mkPen(color=(0, 122, 204), width=4))
+            self.signal.setPen(pg.mkPen(color=(0, 122, 204), width=4))
             self.log.i(_('SIGNAL_NOT_STABILIZED') + ' since ' + str(self.data_queue[0]))
         else:
-            self.signal_plot.setPen(pg.mkPen(color=(118, 178, 87),  width=4))
+            self.signal.setPen(pg.mkPen(color=(118, 178, 87),  width=4))
             self.log.i(_('SIGNAL_STABILIZED') + ' since ' + str(self.data_queue[0]))
         self.is_signal_stabilized = not self.is_signal_stabilized
 
@@ -497,7 +533,31 @@ class NoiserGUI(QMainWindow):
         """
         if self.is_reading:
             self.serial_thread.rate = rate
+    def save_txt(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save as TXT', '', 'Text files (*.txt);;All Files (*)')
+        if filename:
+            with open(filename, 'w') as f:
+                # Write column headers
+                f.write('Time\tVoltage\n')
+                # Write data rows
+                for row in range(self.table.rowCount()):
+                    time_item = self.table.item(row, 0)
+                    voltage_item = self.table.item(row, 1)
+                    f.write(f"{time_item.text()}\t{voltage_item.text()}\n")
 
+
+    def save_csv(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save as CSV', '', 'CSV files (*.csv);;All Files (*)')
+        if filename:
+            with open(filename, 'w', newline='') as f:
+                writer = csv.writer(f)
+                # Write column headers
+                writer.writerow(['Time', 'Voltage'])
+                # Write data rows
+                for row in range(self.table.rowCount()):
+                    time_item = self.table.item(row, 0)
+                    voltage_item = self.table.item(row, 1)
+                    writer.writerow([time_item.text(), voltage_item.text()])
 
     ############################
     # Utility Methods

@@ -315,6 +315,11 @@ def ToolBar(self, toolbarModel, name):
             button = QAction(QIcon(action['icon']), action['name'], self)
             button.setStatusTip(action['status'])
             button.triggered.connect(getattr(self, action['action']))
+            if 'setCheckable' in action:
+                button.setCheckable(True)
+            if 'triggered' in action:
+                function = getattr(self, action['triggered'])
+                button.triggered.connect(function)
             toolbar.addAction(button)
         elif action['type'] == 'separator':
             toolbar.addSeparator()
