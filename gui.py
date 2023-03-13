@@ -60,6 +60,7 @@ class NoiserGUI(QMainWindow):
         self.NO_BOARD   = _('NO_BOARD')
         self.is_reading = False
         self.is_saved   = False
+        self.is_signal_stabilized = False
         self.serial_connection = None
 
         self.setWindowTitle(self.title)
@@ -95,11 +96,33 @@ class NoiserGUI(QMainWindow):
         self.Yscale_min = self.ids['Yscale_min'].value()
         self.Yscale_max = self.ids['Yscale_max'].value()
 
+        # disallow inverting values
         self.ids['Yscale_min'].setMaximum(self.Yscale_max - 1)
         self.ids['Yscale_max'].setMinimum(self.Yscale_min + 1)
 
         self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
 
+
+    def onAutoScaleClick(self):
+        """
+            Changes scale of the plotter according to max and min values
+        """
+        if self.data_queue:
+            voltages_in_queue = self.data_voltages_queue
+            min_val, max_val = min(voltages_in_queue), max(voltages_in_queue)
+
+            # sets the min and max according to voltages and gives a padding TODO needs work
+            min_val = max(int(min_val), -12)
+            max_val = min(int(max_val + 1), 12)
+
+            self.ids['Yscale_min'].setValue(min_val)
+            self.ids['Yscale_max'].setValue(max_val)
+        else:
+            self.log.i(_('PLOT_ERR_AUTOSCALE'))
+
+        self.setPlotterRange()
+        self.statusbar.showMessage(_('STATUSBAR_SCALE_CHANGED') + str([self.Yscale_min, self.Yscale_max]), 1000)
+    
 
     def onConnectButtonClick(self, baudrate=9600):
         """
@@ -345,20 +368,31 @@ class NoiserGUI(QMainWindow):
         self.analyzer.setStyleSheet("QTabWidget::pane { border: 0; }")
 
         ## plotter
-        self.plotter = pg.PlotWidget()
+        self.plotter = pg.PlotWidget(useOpenGL=True)
         self.plotter.setLabel('left', 'Voltage', units='V', size='18pt')
         self.plotter.setLabel('bottom', 'Time', units='s', size='18pt')
         self.plotter.showGrid(x=True, y=True, alpha=0.7)
         self.plotter.setLimits(xMin = 0, yMin = -12, yMax = 12)
-        self.plotter.setAspectLocked(lock=True, ratio=1)
+        #self.plotter.setAspectLocked(lock=True, ratio=1)
+        self.plotter.setMouseEnabled(x=True,y=False) 
+
+        vb = self.plotter.getViewBox()                     
+        vb.setAspectLocked(lock=False)            
+        vb.setAutoVisible(y=1.0)                
+        vb.enableAutoRange(axis='y', enable=True)
+
         self.setPlotterRange()
+        self.setStabilizationDeviation()
 
         # TODO CONSIDERATIONS for 'essential mode
         #self.plotter.setDownsampling(auto=True)
 
-        self.data = deque(maxlen=13)    # points before stacking out
-        self.time = np.zeros(1)
-        self.voltage = np.zeros(1)
+        deque_len = 21
+        self.data_queue = deque(maxlen=deque_len)
+        self.data_voltages_queue = deque(maxlen=deque_len)   # optimizing for speed
+
+        self.time = np.zeros(deque_len)
+        self.voltage = np.zeros(deque_len)
 
         # Plot the initial data
         self.curve = self.plotter.plot(self.time, self.voltage, pen='g', width=5, name='Voltage')
@@ -383,18 +417,50 @@ class NoiserGUI(QMainWindow):
             Updates the plot with data
         """
         new_time = self.time[-1] + (1 / self.serial_thread.rate)
-        
-        self.data.append((new_time, new_voltage))
-        print(self.data)
 
-        self.time, self.voltage = zip(*self.data)
+        self.data_queue.append((new_time, new_voltage))
+        self.data_voltages_queue.append(new_voltage)
+
         #print(str(self.time) + ' > ' + str(self.voltage))
+        self.time, self.voltage = zip(*self.data_queue)
 
+        if self.checkStabilization() != self.is_signal_stabilized:
+            self.toggleStabilization()
+    
         self.curve.setData(self.time, self.voltage)
-        self.plotter.setXRange(self.time[-20], self.time[-1], padding=0)
         self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
+        self.plotter.setXRange(self.time[-20], self.time[-1], padding=0)
         #self.label.setPos(self.x_data[-1], 1)
         #self.label.setText(f"Y = {self.y_data[-1]:.2f}")
+
+
+    def toggleStabilization(self):
+        """
+            Updates the GUI and the curve according to stabilization change
+        """
+        if self.is_signal_stabilized:
+            self.curve.setPen(pg.mkPen(color=(0, 0, 255)))
+            self.log.i(_('SIGNAL_NOT_STABILIZED') + ' since ' + str(self.data_queue[0]))
+        else:
+            self.curve.setPen(pg.mkPen(color=(0, 255, 0)))
+            self.log.i(_('SIGNAL_STABILIZED') + ' since ' + str(self.data_queue[0]))
+        self.is_signal_stabilized = not self.is_signal_stabilized
+
+
+    def checkStabilization(self):
+        """
+            Checks if the signal is stabilized
+        """
+        voltages_std_dev = np.std(self.data_voltages_queue)
+        return voltages_std_dev < self.stabilization_deviation
+
+
+    def setStabilizationDeviation(self):
+        """
+            Updates the stabilization value
+        """
+        self.stabilization_deviation = self.ids['stabilization_deviation'].value()
+        print(self.stabilization_deviation)
 
 
     def setReadRate(self, rate):

@@ -352,6 +352,28 @@ def ToolBar(self, toolbarModel, name):
             if 'setSuffix' in action:
                 spinBox.setSuffix(action['setSuffix'])
             toolbar.addWidget(spinBox)
+        elif action['type'] == 'doublespinbox':
+            spinBox = QDoubleSpinBox()
+            spinBox.setStatusTip(action['status'])
+            spinBox.setValue(float(action['value']))
+            if 'min' in action:
+                spinBox.setMinimum(int(action['min']))
+            if 'max' in action:
+                spinBox.setMaximum(int(action['max']))
+            function = getattr(self, action['action'])
+            spinBox.valueChanged.connect(function)
+            if '@id' in action:
+                id = action['@id']
+                self.ids[id] = spinBox
+            if 'setPrefix' in action:
+                spinBox.setPrefix(action['setPrefix'])
+            if 'setSuffix' in action:
+                spinBox.setSuffix(action['setSuffix'])
+            if 'setDecimals' in action:
+                spinBox.setDecimals(2)
+            if 'setSingleStep' in action:
+                spinBox.setSingleStep(0.01)
+            toolbar.addWidget(spinBox)   
         elif action['type'] == 'lineEdit':
             editLine = QLineEdit()
             editLine.setFixedWidth(int(action['width']))

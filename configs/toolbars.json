@@ -141,9 +141,20 @@
                 "text": "Threshold [V]:"
             },
             {
-                "type": "lineEdit",
-                "width": "50",
-                "validator": "thresholdValidator"
+                "type" : "lineEdit",
+                "width" : "50",
+                "validator" : "thresholdValidator"
+            },
+            {
+                "type" : "doublespinbox",
+                "@id" : "stabilization_deviation",
+                "name": "Stabilization",
+                "setPrefix" : "Stabilization: ",
+                "status": "Standard deviation to consider when checking for stabilization",
+                "value": "0.1",
+                "min": "0",
+                "setSingleStep" : "0.01",
+                "action": "setStabilizationDeviation"
             }
         ]
     },
@@ -161,7 +172,7 @@
                 "setPrefix" : "Y-scale min: ",
                 "setSuffix" : " [V]",
                 "status": "Sets the Y-scale minimum in the oscilloscope",
-                "value": "1",
+                "value": "-1",
                 "min": "-12",
                 "action": "setPlotterRange"
             },
@@ -172,9 +183,17 @@
                 "setPrefix" : "Y-scale max: ",
                 "setSuffix" : " [V]",
                 "status": "Sets the Y-scale maximum in the oscilloscope",
-                "value": "2",
+                "value": "4",
                 "max": "12",
                 "action": "setPlotterRange"
+            },
+            {
+                "type": "button",
+                "@id": "auto_scale",
+                "name": "Auto Scale",
+                "icon": "./data/icons/ic_autoscale.svg",
+                "status": "Auto-scales Y-axis according to the max-min values in queue",
+                "action": "onAutoScaleClick"
             }
         ]
     },

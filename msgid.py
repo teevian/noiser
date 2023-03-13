@@ -2,17 +2,23 @@ __MAP_MESSAGES = {
         "ENV_CREATE" : "Creating NOISR environment...",
         "ENV_OK"    : "The environment is set and ready to go! ",
         "ENV_EXIT"  : "Live long and prosper! ",
-        "CON_ERR_NOT_OK": "404: board not found ",
-        "READ_START" : "Reading... 🟢 ",
-        "READ_STOP" : "Stopped reading 🟥 ",
-        "DATA_SAVE" : "Saving the precious data... ",
-        "DATA_LOAD" : "Loading the precious data... ",
         "NO_BOARD" : "no board",
+
+        "READ_START" : "🟢 Started reading...",
+        "READ_STOP" : "🟥 Stopped reading",
+        "DATA_SAVE" : "Saving the precious data...",
+        "DATA_LOAD" : "Loading the precious data...",
+
         "CREATED_LOGGER" : "I've created myself",
         "EASTER_EGG_LUIS_MELO_GREETING" : "Viva!",
 
+        "PLOT_ERR_AUTOSCALE" : "No data in queue, so I've auto-scaled to standard",
+
         "STATUSBAR_READ_START" : "Reading!",
+        "STATUSBAR_SCALE_CHANGED" : "Y-axis scale changed to:",
         "STATUSBAR_PIN_CHANGED" : "Connected to pin ",
+
+        "SIGNAL_STABILIZED" : "Signal stabilized",
 
         "CON_NEW"   : "Establishing a new connection... ",
         "CON_CHECKING_PORTS" : "Checking for Arduino connected ports... ",
@@ -36,7 +42,7 @@ def _(msgid):
     """
     return __MAP_MESSAGES.get(msgid, msgid)
 
-def egg(randomInt):
+def egg(lottery):
     eggs = [
         "'HTTP 418: I'm a teapot 🫖'",                     # HTTP: 418
         "'I'm sorry, Dave, I'm afraid I can't do that'",   # 2001 Space Odissey
@@ -44,4 +50,4 @@ def egg(randomInt):
         "'Hello, World!'",                                 # Hello world
         "'Houston, we have a problem'"                     # Apollo 13
     ]
-    return eggs[randomInt % len(eggs)]
+    return eggs[lottery % len(eggs)]
