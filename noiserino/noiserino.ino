@@ -1,76 +1,63 @@
-byte pin_input = 0;
+const int analogPin = A0;
+int analogValue = 0;
+bool reading = false;
 
-const uint8_t A[6];   // analog input values
-String boardInfo;     // string to store board information
-bool stopReading = false;
-int analogPin;
+// state machine 
+enum STATES {
+  IDLE,
+  READING,
+  COMPLETE,
+};
+
+// IAD PROTOCOL                 https://theasciicode.com.ar
+uint32_t IAD_START  = 0x01; //  SOH: start header control character 
+uint32_t IAD_PAUSE  = 0x03; //  ETX: indicates that it is the end of the message (interrupt)
+uint32_t IAD_STOP   = 0x04; //  EOT: indicates the end of transmission
+uint32_t IAD_ENQUIRE= 0x05; //  ENQ: requests a response from arduino to confirm it is ready (Equiry)
+uint32_t IAD_OK     = 0x06; //  ACK: acknowledgement
+uint32_t IAD_SYNC   = 0x16; //  DLE: synchronous Idle (used for transmission)
+uint32_t IAD_ERROR  = 0x21; //  NAK: exclaim(error) special character
 
 void setup() {
-  Serial.begin(9600);
-  randomSeed(analogRead(0));  // seed the random number generator with an analog input value
-
-
+  Serial.begin(9600); // Initialize serial communication
+  randomSeed(analogRead(0));
 }
 
 void loop() {
-  if(!stopReading) {
-    if(Serial.available() > 0) {
-      analogPin = Serial.parseInt();
+  // Wait for command from Python
+  while (Serial.available() == 0);
+  int command = Serial.read();
 
-      int value;
-      while(!stopReading) {
-        value = analogRead(analogPin);
-        Serial.println(value);
-        if(Serial.available() > 0) {
-          String command = Serial.readStringUntil('\n');
-          if(command == "STOP\n") {
-            stopReading = true;
-          }
-        }
+  // If command is 's', start sending analog values
+  if (command == IAD_START) {
+  
+    // Acknowledge command from Python
+    Serial.write(IAD_OK);
+
+    // Wait for analog pin number from Python - - WRITE A TIMEOUT HERE TODO
+    while (Serial.available() == 0);
+    uint32_t pin = Serial.read();
+    Serial.flush();
+
+    reading = true;
+    // Send analog values to Python program
+    while (reading) {
+      analogValue = analogRead(pin);
+      double voltage = analogValue * (5. / 1023.);
+      Serial.println(voltage, 8);
+
+      // Check for stop command from Python
+      if (Serial.available() && Serial.read() == IAD_STOP) {
+        reading = false;
       }
+
+      delay(100); // Delay for 100ms
     }
+  } else if(command = IAD_ENQUIRE) {
+    // Generate random number and send to Python
+    int randomValue = random(20);
+    Serial.println(randomValue);
+
+    Serial.flush();
   }
-
-  if (Serial.available() > 0) {
-    String command = Serial.readStringUntil('\n'); // read command from Noisr
-    command.trim(); // remove whitespace
-
-    if(command == "handshake") {
-      // send random number to tell its ok!
-      Serial.print(random(20));
-    } else if(command = "0") {
-      pin = Serial.parseInt();
-      int value = analogRead(pin)
-      Serial.print(value)
-    }
-
-    delay(1000);
 }
-}
-/*
-    if(command == "handshake") {
-      // send random number to tell its ok!
-      Serial.print(random(20));
-    } else if(command == "info") {
-      // send board information
-      boardInfo = "Board type: ";
-#if defined(__AVR_ATmega328P__)
-      boardInfo += "Arduino Uno";
-#elif defined(__AVR_ATmega2560__)
-      boardInfo += "Arduino Mega";
-#elif defined(__AVR_ATmega32u4__)
-      boardInfo += "Arduino Leonardo"
-#else
-      boardInfo += "Unknown";
-#endif
-      Serial.print(boardInfo);
-    }
-  }
-/*
-  if(pin_input >= 0 && pin_input <=5) {
-    float value = analogRead(pin_input);
-    Serial.println(value * 5 / 1023); 
-  }
-*/
-
-
