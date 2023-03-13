@@ -213,7 +213,7 @@ class NoiserGUI(QMainWindow):
         self.btPlayPause.setText("Stop")
         self.statusbar.setStyleSheet('background-color: rgb(118, 178, 87);')
         self.statusbar.showMessage(_('STATUSBAR_READ_START'), 1000)
-        self.setWindowTitle(f'{self.name} (🟢 reading...)')
+        self.setWindowTitle(f'{self.title} (🟢 reading...)')
 
 
     def __stopReadingSetup(self):
@@ -333,10 +333,6 @@ class NoiserGUI(QMainWindow):
         factory.boardCodeDialog('./noiserino/noiserino.ino')
 
 
-    def onClick(self):
-        pass
-
-
     def thresholdValidator(self):
         validator = QIntValidator()
         validator.setRange(-25, 25)
@@ -387,7 +383,7 @@ class NoiserGUI(QMainWindow):
         # TODO CONSIDERATIONS for 'essential mode
         #self.plotter.setDownsampling(auto=True)
 
-        deque_len = 21
+        deque_len = 50
         self.data_queue = deque(maxlen=deque_len)
         self.data_voltages_queue = deque(maxlen=deque_len)   # optimizing for speed
 
@@ -395,7 +391,16 @@ class NoiserGUI(QMainWindow):
         self.voltage = np.zeros(deque_len)
 
         # Plot the initial data
-        self.curve = self.plotter.plot(self.time, self.voltage, pen='g', width=5, name='Voltage')
+        self.signal_plot = self.plotter.plot(self.time, self.voltage, pen='g', width=5, name='Voltage')
+        self.threshold_line = pg.InfiniteLine(
+            angle=0, movable=True, # TODO enable user to move the threshold - sync with qdoublespinbox
+            pen=pg.mkPen(color='r',
+            width=3,
+            style=Qt.DashLine))
+        self.threshold_line.sigDragged.connect(self.updateThresholdSpinBox)
+
+        self.threshold_line.setPos(float(self.ids['threshold_reference'].value()))
+        self.plotter.addItem(self.threshold_line)
 
         ## table
         table = QTableWidget(20, 4)
@@ -427,11 +432,27 @@ class NoiserGUI(QMainWindow):
         if self.checkStabilization() != self.is_signal_stabilized:
             self.toggleStabilization()
     
-        self.curve.setData(self.time, self.voltage)
+        self.signal_plot.setData(self.time, self.voltage)
         self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
         self.plotter.setXRange(self.time[-20], self.time[-1], padding=0)
         #self.label.setPos(self.x_data[-1], 1)
         #self.label.setText(f"Y = {self.y_data[-1]:.2f}")
+
+
+    def updateThresholdSpinBox(self):
+        """
+            Updates the threshold value if the threshold is manually moved
+        """
+        new_threshold = self.threshold_line.value()
+        self.ids['threshold_reference'].setValue(new_threshold)
+
+
+    def updateThresholdLine(self, new_threshold):
+        """
+            Updates the threshold line in our friend plotter
+        """
+        self.threshold_line.setPos(new_threshold)
+        self.threshold_reference = new_threshold
 
 
     def toggleStabilization(self):
@@ -439,12 +460,19 @@ class NoiserGUI(QMainWindow):
             Updates the GUI and the curve according to stabilization change
         """
         if self.is_signal_stabilized:
-            self.curve.setPen(pg.mkPen(color=(0, 0, 255)))
+            self.signal_plot.setPen(pg.mkPen(color=(0, 122, 204), width=4))
             self.log.i(_('SIGNAL_NOT_STABILIZED') + ' since ' + str(self.data_queue[0]))
         else:
-            self.curve.setPen(pg.mkPen(color=(0, 255, 0)))
+            self.signal_plot.setPen(pg.mkPen(color=(118, 178, 87),  width=4))
             self.log.i(_('SIGNAL_STABILIZED') + ' since ' + str(self.data_queue[0]))
         self.is_signal_stabilized = not self.is_signal_stabilized
+
+
+    def setThreshold(self):
+        """
+            Changes the threshold
+        """
+        self.threshold_reference = self.ids['threshold_reference'].value()
 
 
     def checkStabilization(self):

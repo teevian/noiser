@@ -335,45 +335,46 @@ def ToolBar(self, toolbarModel, name):
                 comboBox.currentIndexChanged.connect(getattr(self, action['currentIndexSetChanged']))
             toolbar.addWidget(comboBox)
         elif action['type'] == 'spinbox':
-            spinBox = QSpinBox()
-            spinBox.setStatusTip(action['status'])
-            spinBox.setValue(int(action['value']))
+            doublespinBox = QSpinBox()
+            doublespinBox.setStatusTip(action['status'])
+            doublespinBox.setValue(int(action['value']))
             if 'min' in action:
-                spinBox.setMinimum(int(action['min']))
+                doublespinBox.setMinimum(int(action['min']))
             if 'max' in action:
-                spinBox.setMaximum(int(action['max']))
+                doublespinBox.setMaximum(int(action['max']))
             function = getattr(self, action['action'])
-            spinBox.valueChanged.connect(function)
+            doublespinBox.valueChanged.connect(function)
             if '@id' in action:
                 id = action['@id']
-                self.ids[id] = spinBox
+                self.ids[id] = doublespinBox
             if 'setPrefix' in action:
-                spinBox.setPrefix(action['setPrefix'])
+                doublespinBox.setPrefix(action['setPrefix'])
             if 'setSuffix' in action:
-                spinBox.setSuffix(action['setSuffix'])
-            toolbar.addWidget(spinBox)
+                doublespinBox.setSuffix(action['setSuffix'])
+            toolbar.addWidget(doublespinBox)
         elif action['type'] == 'doublespinbox':
-            spinBox = QDoubleSpinBox()
-            spinBox.setStatusTip(action['status'])
-            spinBox.setValue(float(action['value']))
+            doublespinBox = QDoubleSpinBox()
+            doublespinBox.setStatusTip(action['status'])
+            doublespinBox.setValue(float(action['value']))
             if 'min' in action:
-                spinBox.setMinimum(int(action['min']))
+                doublespinBox.setMinimum(float(action['min']))
             if 'max' in action:
-                spinBox.setMaximum(int(action['max']))
-            function = getattr(self, action['action'])
-            spinBox.valueChanged.connect(function)
+                doublespinBox.setMaximum(float(action['max']))
+            if 'valueChanged' in action:
+                function = getattr(self, action['valueChanged'])
+                doublespinBox.valueChanged.connect(function)
             if '@id' in action:
                 id = action['@id']
-                self.ids[id] = spinBox
+                self.ids[id] = doublespinBox
             if 'setPrefix' in action:
-                spinBox.setPrefix(action['setPrefix'])
+                doublespinBox.setPrefix(action['setPrefix'])
             if 'setSuffix' in action:
-                spinBox.setSuffix(action['setSuffix'])
+                doublespinBox.setSuffix(action['setSuffix'])
             if 'setDecimals' in action:
-                spinBox.setDecimals(2)
+                doublespinBox.setDecimals(int(action['setDecimals']))
             if 'setSingleStep' in action:
-                spinBox.setSingleStep(0.01)
-            toolbar.addWidget(spinBox)   
+                doublespinBox.setSingleStep(float(action['setSingleStep']))
+            toolbar.addWidget(doublespinBox)   
         elif action['type'] == 'lineEdit':
             editLine = QLineEdit()
             editLine.setFixedWidth(int(action['width']))

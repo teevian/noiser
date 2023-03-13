@@ -11,21 +11,21 @@
                 "name": "New File",
                 "icon": "./data/icons/ic_instance_new.svg",
                 "status": "Creates new .IAD instance",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "button",
                 "name": "Save File",
                 "icon": "./data/icons/instance_save.svg",
                 "status": "Save this .IAD instance",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "button",
                 "name": "Load File",
                 "icon": "./data/icons/instance_load.svg",
                 "status": "Loads a .IAD instance",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "separator"
@@ -35,14 +35,14 @@
                 "name": "Save Data CSV",
                 "icon": "./data/icons/save_data_csv.svg",
                 "status": "Saves data into a .CSV file",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "button",
                 "name": "Save Data TXT",
                 "icon": "./data/icons/save_data_txt.svg",
                 "status": "Saves data into a .TXT file",
-                "action": "onClick"
+                "action": "doNothing"
             }
         ]
     },
@@ -115,7 +115,7 @@
                 "name": "All notes",
                 "icon": "./data/icons/notes.svg",
                 "status": "All notes taken for this .IAD instance",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "button",
@@ -137,13 +137,17 @@
                 "type": "break"
             },
             {
-                "type": "label",
-                "text": "Threshold [V]:"
-            },
-            {
-                "type" : "lineEdit",
-                "width" : "50",
-                "validator" : "thresholdValidator"
+                "type" : "doublespinbox",
+                "@id" : "threshold_reference",
+                "name": "Threshold",
+                "setPrefix" : "Threshold: ",
+                "status" : "Threshold reference to be considered in numeric methods",
+                "value" : "1.40",
+                "min" : "-12.00",
+                "max" : "12.00",
+                "setDecimals" : "3",
+                "setSingleStep" : "0.25",
+                "valueChanged" : "updateThresholdLine"
             },
             {
                 "type" : "doublespinbox",
@@ -209,28 +213,28 @@
                 "name": "Moving Average",
                 "icon": "./data/icons/plot_mean.svg",
                 "status": "Shows moving average for the signal",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "button",
                 "name": "Maxima and Minima",
                 "icon": "./data/icons/plot_peaktopeak.svg",
                 "status": "Shows maxima and minima for the signal",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "button",
                 "name": "Measures",
                 "icon": "./data/icons/plot_measures.svg",
                 "status": "Shows maximum and minimum for the signal",
-                "action": "onClick"
+                "action": "doNothing"
             },
             {
                 "type": "button",
                 "name": "Threshold",
                 "icon": "./data/icons/plot_tolerance.svg",
                 "status": "Shows threshold for the signal",
-                "action": "onClick"
+                "action": "doNothing"
             }
         ]
     }

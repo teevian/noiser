@@ -19,6 +19,7 @@ __MAP_MESSAGES = {
         "STATUSBAR_PIN_CHANGED" : "Connected to pin ",
 
         "SIGNAL_STABILIZED" : "Signal stabilized",
+        "SIGNAL_NOT_STABILIZED" : "Signal not stabilized",
 
         "CON_NEW"   : "Establishing a new connection... ",
         "CON_CHECKING_PORTS" : "Checking for Arduino connected ports... ",
