@@ -1,20 +1,13 @@
-const int analogPin = A0;
 int analogValue = 0;
 bool reading = false;
 
-// state machine 
-enum STATES {
-  IDLE,
-  READING,
-  COMPLETE,
-};
 
 // IAD PROTOCOL                 https://theasciicode.com.ar
 uint32_t IAD_START  = 0x01; //  SOH: start header control character 
 uint32_t IAD_PAUSE  = 0x03; //  ETX: indicates that it is the end of the message (interrupt)
 uint32_t IAD_STOP   = 0x04; //  EOT: indicates the end of transmission
 uint32_t IAD_ENQUIRE= 0x05; //  ENQ: requests a response from arduino to confirm it is ready (Equiry)
-uint32_t IAD_OK     = 0x06; //  ACK: acknowledgement
+uint32_t IAD_OK     = 0x06; //  ACK: acknowledgsement
 uint32_t IAD_SYNC   = 0x16; //  DLE: synchronous Idle (used for transmission)
 uint32_t IAD_ERROR  = 0x21; //  NAK: exclaim(error) special character
 
@@ -57,6 +50,11 @@ void loop() {
     // Generate random number and send to Python
     int randomValue = random(20);
     Serial.println(randomValue);
+
+    Serial.flush();
+  } else {
+    // sends an error message
+    Serial.write(IAD_ERROR);
 
     Serial.flush();
   }

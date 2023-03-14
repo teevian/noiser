@@ -74,7 +74,13 @@ def getPorts(system):
     """
     ports = []
     if system.lower() == 'linux':       # Linux
-        ports = [f.name for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
+        matching_files = [f for f in os.scandir('/dev') if f.name.startswith('ttyACM')]
+
+        # create list of full file paths
+        ports = []
+        for file in matching_files:
+            full_path = os.path.join('/dev', file.name)
+            ports.append(full_path)
     elif system.lower() == 'darwin':    # MacOS
         ports = [   
             port.device
@@ -86,7 +92,6 @@ def getPorts(system):
     return ports
 
 
-# TODO this function should return an integer; the string part should be handled on gui
 def handshake(connection):
     """
         Handshake with Arduino. Retuns a string
@@ -103,7 +108,7 @@ def handshake(connection):
         return "Arduino is down"
 
 
-## TODO this should raise some kind of exception
+# TODO this should raise an exception
 def startReadingPin(self, connection, pin):
     """
         Starts reading input
@@ -150,7 +155,7 @@ def openConnection(port):
             raise Exception('Serial monitor not found!')
 
 
-def info():
+def info(connection):
     """
         Receives a @connection string and returns a representative dict
     """
@@ -163,27 +168,3 @@ def info():
         parsedConnection[key.strip()] = value.strip()
 
     return parsedConnection
-
-def stopListenToPin(pin = 0):
-    ser.write(b"analog\n")
-    response = ser.readline().decode().strip()
-    print("Analog input values:", response)
-
-def info():
-    ser.write(b"info\n")
-    response = ser.readline().decode().strip()
-    print("Arduino information:", response)
-
-
-CONTROLS = {
-    "listen" : startReadingPin,
-    "info" : info,
-    "interrupt" : stopListenToPin,
-    "test" : handshake
-}
-
-
-class PortError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(message)

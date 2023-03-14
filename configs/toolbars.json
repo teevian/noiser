@@ -35,14 +35,14 @@
                 "name": "Save Data CSV",
                 "icon": "./data/icons/save_data_csv.svg",
                 "status": "Saves data into a .CSV file",
-                "action": "doNothing"
+                "action": "saveCSV"
             },
             {
                 "type": "button",
                 "name": "Save Data TXT",
                 "icon": "./data/icons/save_data_txt.svg",
                 "status": "Saves data into a .TXT file",
-                "action": "doNothing"
+                "action": "saveTXT"
             }
         ]
     },

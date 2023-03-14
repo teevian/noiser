@@ -8,7 +8,7 @@ def getFunName(extension, separator=' '):
     if not re.match(r"[.][a-zA-Z]+$", extension):
         raise ValueError("Invalid extension format, must be in the format '.[A-z]'")
 
-    NAME    = ['Einstein', 'Feynman', 'Schrödinger', 'Newton', 'Hawking', 'Tesla', 'Curie', 'Bohr', 'Hertz', 'Planck']
+    NAME    = ['Einstein', 'Feynman', 'Schrodinger', 'Newton', 'Hawking', 'Tesla', 'Curie', 'Bohr', 'Hertz', 'Planck']
     VERB    = ['tickles', 'hugs', 'whispers_to', 'is_doing', 'dances_with', 'paints', 'sings_to', 'high_fives', 'pets', 'massages', 'plays_fetch_with']
     SUBJECT = ['avocados', 'paperclips', 'teevian', 'cookies', 'poetry', 'puzzles', 'karaokes', 'sushi', 'photons', 'lasers']
 

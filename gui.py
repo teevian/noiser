@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import json, time, os, serial
+import json, time, os, serial, csv
 import pyqtgraph as pg
 import factory, connection
 import random
@@ -10,7 +10,6 @@ import numpy as np
 from collections import deque
 from platform import system
 from msgid import _, egg
-from events import *
 from PyQt5.QtCore import (
         QSize, Qt, pyqtSlot, QDateTime, QTimer, QTime
         )
@@ -21,7 +20,7 @@ from PyQt5.QtWidgets import (
         QComboBox, QDialog, QTabWidget, QSizePolicy,
         QTextEdit, QTableWidget, QDial, QLCDNumber, QSpinBox,
         QLineEdit, QPlainTextEdit, QMenuBar, QMenu, QToolBar,
-        QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QTextEdit, QTableWidgetItem
+        QAction, QDoubleSpinBox, QCheckBox, QGridLayout, QTextEdit, QTableWidgetItem, QFileDialog
         )
 from PyQt5.QtGui import (
         QIcon, QIntValidator, QColor
@@ -63,6 +62,9 @@ class NoiserGUI(QMainWindow):
         self.is_signal_stabilized = False
         self.serial_connection = None
 
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.onReadStopButtonClick)
+
         self.setWindowTitle(self.title)
         self.setWindowIcon(QIcon(window['icon']))
         self.resize(QSize(window['width'], window['height']))
@@ -86,143 +88,8 @@ class NoiserGUI(QMainWindow):
         self.log.i(_('ENV_OK'))
 
         self.getArduinoPorts()
-        self.onConnectButtonClick()
+        #self.onConnectButtonClick()
 
-
-    def setPlotterRange(self):
-        """
-            Changes scale of the plotter according to max and min values
-        """
-        self.Yscale_min = self.ids['Yscale_min'].value()
-        self.Yscale_max = self.ids['Yscale_max'].value()
-
-        # disallow inverting values
-        self.ids['Yscale_min'].setMaximum(self.Yscale_max - 1)
-        self.ids['Yscale_max'].setMinimum(self.Yscale_min + 1)
-
-        self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
-
-
-    def onAutoScaleClick(self):
-        """
-            Changes scale of the plotter according to max and min values
-        """
-        if self.data_queue:
-            voltages_in_queue = self.data_voltages_queue
-            min_val, max_val = min(voltages_in_queue), max(voltages_in_queue)
-
-            # sets the min and max according to voltages and gives a padding TODO needs work
-            min_val = max(int(min_val), -12)
-            max_val = min(int(max_val + 1), 12)
-
-            self.ids['Yscale_min'].setValue(min_val)
-            self.ids['Yscale_max'].setValue(max_val)
-        else:
-            self.log.i(_('PLOT_ERR_AUTOSCALE'))
-
-        self.setPlotterRange()
-        self.statusbar.showMessage(_('STATUSBAR_SCALE_CHANGED') + str([self.Yscale_min, self.Yscale_max]), 1000)
-    
-
-    def onConnectButtonClick(self, baudrate=9600):
-        """
-            Opens connection to ackwonledge Arduino
-        """
-        if self.is_reading:
-            self.log.e(_('ERR_THREAD_RUNNING'))
-            return
-
-        try:
-            port = self.ids['combobox_connected_ports'].currentText()
-            if port != self.NO_BOARD:
-                with serial.Serial(port, baudrate) as serial_connection:
-                    self.serial_connection = serial_connection
-                    handshake = connection.handshake(self.serial_connection)
-                    self.log.v(_('CON_SERIAL_OK'))
-                    self.log.i(_('CON_ARDUINO_SAYS') + handshake)
-            else:
-                self.log.e(_('CON_ERR_PORTS'))
-        except (connection.ConnectionError, serial.serialutil.SerialException) as err:
-            self.log.x(err, _('CON_SOL_PORTS'))
-
-
-    def syncArduinoPorts(self):
-        """
-            Syncs the combobox for ports for new ports
-        """
-        self.ids['combobox_connected_ports'].clear()
-        self.ids['combobox_connected_ports'].addItems(self.getArduinoPorts())
-
-
-    def getArduinoPorts(self):
-        """
-            Sets up the combobox with ports connected with Arduino.
-        """
-        self.log.i(_('CON_PORTS'))
-        try:
-            ports = connection.getPorts(self.system)
-            self.log.v(_('CON_OK_PORTS') + str(ports))
-        except connection.PortError as err:
-            self.log.x(err, _('CON_SOL_PORTS'))
-            return [_('NO_BOARD')]
-        return ports
-
-
-    def onReadStopButtonClick(self):
-        """
-            Activates (odd clicks) and interrupts (even clicks) receiving the data from arduino
-        """
-        if not self.is_reading:
-            try:
-                self.serial_connection = serial.Serial(
-                    self.ids['combobox_connected_ports'].currentText(), 9600)
-                self.serial_thread = connection.SerialReader(
-                    self.serial_connection,
-                    self.ids['readRateSpinbox'].value(),
-                    self)
-                self.serial_thread.data_ready.connect(self.update_plot)
-
-                self.serial_connection.write(b'\x01')
-
-                # wait for acknowledgement from Arduino for 5 seconds (timeoout)
-                timeout = time.time() + 5
-                while self.serial_connection.read() != b'\x06':
-                    if time.time() > timeout:
-                        raise connection.ConnectionTimeout(_('CON_ERR_TIMEOUT'))
-
-                pin = self.reading_pin
-                self.serial_connection.write(pin.to_bytes(1, byteorder='little', signed=False))
-
-                self.serial_thread.start()
-                self.__startReadingSetup()
-            except (connection.ConnectionError, serial.SerialException) as err:
-                self.log.x(err)
-        else:
-            # Send command to Arduino to stop sending analog values
-            self.serial_connection.write(b'\x04')
-
-            self.serial_thread.terminate()
-            self.__stopReadingSetup()
-        
-        self.is_reading = not self.is_reading   # toggles every time button is clicked
-
-
-    def __startReadingSetup(self):
-        self.log.i(_('READ_START'))
-
-        self.btPlayPause.setText("Stop")
-        self.statusbar.setStyleSheet('background-color: rgb(118, 178, 87);')
-        self.statusbar.showMessage(_('STATUSBAR_READ_START'), 1000)
-        self.setWindowTitle(f'{self.title} (🟢 reading...)')
-
-
-    def __stopReadingSetup(self):
-        self.log.i(_('READ_STOP'))
-
-        self.btPlayPause.setText('Start')
-        self.statusbar.setStyleSheet('background-color: rgb(0, 122, 204);')
-        self.statusbar.showMessage(_('STATUSBAR_READ_STOP'), 1000)
-        self.setWindowTitle(self.title)
 
     ############################
     # Inner classes
@@ -281,7 +148,149 @@ class NoiserGUI(QMainWindow):
     ############################
     # Event handling methods
     ############################
- 
+    def onReadStopButtonClick(self):
+        """
+            Activates (odd clicks) and interrupts (even clicks) receiving the data from arduino
+        """
+        # stops the timer if it is running
+        if self.timer.isActive():
+            self.timer.stop()
+
+        if not self.is_reading:
+            try:
+                self.serial_connection = serial.Serial(
+                    self.ids['combobox_connected_ports'].currentText(), 9600)
+                self.serial_thread = connection.SerialReader(
+                    self.serial_connection,
+                    self.ids['readRateSpinbox'].value(),
+                    self)
+                self.serial_thread.data_ready.connect(self.update_plot)
+
+                self.serial_connection.write(b'\x01')
+
+                # wait for acknowledgement from Arduino for 5 seconds (timeoout)
+                timeout = time.time() + 5
+                while self.serial_connection.read() != b'\x06':
+                    if time.time() > timeout:
+                        self.log.e(_('CON_ERR_TIMEOUT'))
+                        self.log.i(_('CON_CLICK_AGAIN'))
+                        raise connection.ConnectionTimeout(_('CON_ERR_TIMEOUT'))
+
+                pin = self.reading_pin
+                self.serial_connection.write(pin.to_bytes(1, byteorder='little', signed=False))
+
+                self.serial_thread.start()
+                self.__startReadingSetup()
+            except (connection.ConnectionError, serial.SerialException) as err:
+                self.log.x(err)
+        else:
+            # Send command to Arduino to stop sending analog values
+            self.serial_connection.write(b'\x04')
+
+            self.serial_thread.terminate()
+            self.__stopReadingSetup()
+        
+        self.is_reading = not self.is_reading   # toggles every time button is clicked
+
+
+    def __startReadingSetup(self):
+        self.log.i(_('READ_START'))
+
+        self.btPlayPause.setText("STOP")
+        self.statusbar.setStyleSheet('background-color: rgb(118, 178, 87);')
+        self.statusbar.showMessage(_('STATUSBAR_READ_START'), 1000)
+        self.setWindowTitle(f'{self.title} (🟢 reading...)')
+
+
+    def __stopReadingSetup(self):
+        self.log.i(_('READ_STOP'))
+
+        self.btPlayPause.setText('START')
+        self.statusbar.setStyleSheet('background-color: rgb(0, 122, 204);')
+        self.statusbar.showMessage(_('STATUSBAR_READ_STOP'), 1000)
+        self.setWindowTitle(self.title)
+
+
+    def setPlotterRange(self):
+        """
+            Changes scale of the plotter according to max and min values
+        """
+        self.Yscale_min = self.ids['Yscale_min'].value()
+        self.Yscale_max = self.ids['Yscale_max'].value()
+
+        # disallow inverting values
+        self.ids['Yscale_min'].setMaximum(self.Yscale_max - 1)
+        self.ids['Yscale_max'].setMinimum(self.Yscale_min + 1)
+
+        self.plotter.setYRange(self.Yscale_min, self.Yscale_max, padding=0)
+
+
+    def onAutoScaleClick(self):
+        """
+            Changes scale of the plotter according to max and min values
+        """
+        if self.data_queue:
+            voltages_in_queue = self.data_voltages_queue
+            min_val, max_val = min(voltages_in_queue), max(voltages_in_queue)
+
+            # sets the min and max according to voltages and gives a padding TODO needs work
+            min_val = max(int(min_val), -12)
+            max_val = min(int(max_val + 1), 12)
+
+            self.ids['Yscale_min'].setValue(min_val)
+            self.ids['Yscale_max'].setValue(max_val)
+        else:
+            self.log.i(_('PLOT_ERR_AUTOSCALE'))
+
+        self.setPlotterRange()
+        self.statusbar.showMessage(_('STATUSBAR_SCALE_CHANGED') + str([self.Yscale_min, self.Yscale_max]), 1000)
+    
+
+    def onConnectButtonClick(self, baudrate=9600):
+        """
+            Opens connection to ackwonledge Arduino
+        """
+        self.log.e("Como este programa não foi testado em ambiente de laboratório, não quisemos arriscar em manter esta funcionalidade... :(")
+        if self.is_reading:
+            self.log.e(_('ERR_THREAD_RUNNING'))
+            return
+
+        #try:
+        #    port = self.ids['combobox_connected_ports'].currentText()
+        #    if port != self.NO_BOARD:
+        #        with serial.Serial(port, baudrate) as serial_connection:
+        #            self.serial_connection = serial_connection
+        #            handshake = connection.handshake(self.serial_connection)
+        #            self.log.v(_('CON_SERIAL_OK'))
+        #            self.log.i(_('CON_ARDUINO_SAYS') + handshake)
+        #    else:
+        #        self.log.e(_('CON_ERR_PORTS'))
+        #except (connection.ConnectionError, serial.serialutil.SerialException) as err:
+        #    self.log.x(err, _('CON_SOL_PORTS'))
+
+
+    def syncArduinoPorts(self):
+        """
+            Syncs the combobox for ports for new ports
+        """
+        self.ids['combobox_connected_ports'].clear()
+        self.ids['combobox_connected_ports'].addItems(self.getArduinoPorts())
+
+
+    def getArduinoPorts(self):
+        """
+            Sets up the combobox with ports connected with Arduino.
+        """
+        self.log.i(_('CON_PORTS'))
+        try:
+            ports = connection.getPorts(self.system)
+            self.log.v(_('CON_OK_PORTS') + str(ports))
+        except connection.PortError as err:
+            self.log.x(err, _('CON_SOL_PORTS'))
+            return [_('NO_BOARD')]
+        return ports
+
+
     def closeEvent(self, event):
         """
             Disallows the window to be closed while Serial thread is running
@@ -338,6 +347,7 @@ class NoiserGUI(QMainWindow):
         validator.setRange(-25, 25)
         return validator
 
+
     def toggleThreshold(self, checked):
         if checked:
             self.threshold_line.show()
@@ -350,13 +360,6 @@ class NoiserGUI(QMainWindow):
             self.clamp_function.show()
         else:
             self.clamp_function.hide()
-
-
-    def btPlayPauseOnToggled(self, pushed):
-        if pushed:
-            self.btPlayPause.setIcon(QIcon('./data/icons/warning.svg'))
-        else:
-            self.btPlayPause.setIcon(QIcon('./data/icons/target.svg'))
 
 
     def onAnalogPinChanged(self):
@@ -396,14 +399,14 @@ class NoiserGUI(QMainWindow):
         # TODO CONSIDERATIONS for 'essential mode
         #self.plotter.setDownsampling(auto=True)
 
-        deque_len = 50
-        self.data_queue = deque(maxlen=deque_len)
-        self.data_voltages_queue_clamp = deque(maxlen=deque_len)
+        self.buffer_deque_len = 50
+        self.data_queue = deque(maxlen=self.buffer_deque_len)
+        self.data_voltages_queue_clamp = deque(maxlen=self.buffer_deque_len)
         #self.data_queue_moving_average = deque(maxlen=deque_len +2)
-        self.data_voltages_queue = deque(maxlen=deque_len)   # optimizing for speed
+        self.data_voltages_queue = deque(maxlen=self.buffer_deque_len)   # optimizing for speed
 
-        self.times = np.zeros(deque_len)
-        self.voltages = np.zeros(deque_len)
+        self.times = np.zeros(self.buffer_deque_len)
+        self.voltages = np.zeros(self.buffer_deque_len)
 
         ## graphs and lines to show
         self.signal = self.plotter.plot(self.times, self.voltages, pen='g', width=5, name='Voltage')
@@ -443,11 +446,19 @@ class NoiserGUI(QMainWindow):
         """
         new_time = self.times[-1] + (1 / self.serial_thread.rate)
 
+        if self.groupSchedule.isChecked() and not self.timer.isActive()\
+            and (self.comboStartAt.currentText() == 'right away' or self.is_signal_stabilized):
+            
+            unit_factor = 1000 if self.comboTimeUnits.currentText() == 's' else 1
+            time = int(self.spinboxTime.value()) * unit_factor
+            self.log.i(_('TIMER_START'))
+            self.timer.start(time)
+
+
         self.data_queue.append((new_time, new_voltage))
         self.data_voltages_queue_clamp.append(self.clampValue(new_voltage))
         self.data_voltages_queue.append(new_voltage)
 
-        #print(str(self.time) + ' > ' + str(self.voltage))
         self.times, self.voltages = zip(*self.data_queue)
 
         if self.checkStabilization() != self.is_signal_stabilized:
@@ -466,6 +477,8 @@ class NoiserGUI(QMainWindow):
         self.table.insertRow(row)
         self.table.setItem(row, 0, QTableWidgetItem(str(round(new_time, 2))))
         self.table.setItem(row, 1, QTableWidgetItem(str(new_voltage)))
+        if self.is_signal_stabilized:
+            self.table.setItem(row, 3, QTableWidgetItem(str('Signal is stabilized;')))
         self.table.scrollToBottom()
 
 
@@ -473,8 +486,10 @@ class NoiserGUI(QMainWindow):
         cumulative_sum = np.cumsum(np.insert(self.data_voltages_queue, 0, 0))
         return (cumulative_sum[n:] - cumulative_sum[:-n]) / float(n)
 
+
     def clampValue(self, value):
         return self.threshold_reference if value >= self.threshold_reference else 0
+
 
     def updateThresholdSpinBox(self):
         """
@@ -490,6 +505,7 @@ class NoiserGUI(QMainWindow):
         """
         self.threshold_line.setPos(new_threshold)
         self.threshold_reference = new_threshold
+
 
     def toggleStabilization(self):
         """
@@ -533,31 +549,30 @@ class NoiserGUI(QMainWindow):
         """
         if self.is_reading:
             self.serial_thread.rate = rate
-    def save_txt(self):
-        filename, _ = QFileDialog.getSaveFileName(self, 'Save as TXT', '', 'Text files (*.txt);;All Files (*)')
+
+
+    def saveTXT(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save as TXT', self.filename, 'Text files (*.txt);;All Files (*)')
         if filename:
             with open(filename, 'w') as f:
-                # Write column headers
                 f.write('Time\tVoltage\n')
-                # Write data rows
                 for row in range(self.table.rowCount()):
                     time_item = self.table.item(row, 0)
                     voltage_item = self.table.item(row, 1)
                     f.write(f"{time_item.text()}\t{voltage_item.text()}\n")
 
 
-    def save_csv(self):
-        filename, _ = QFileDialog.getSaveFileName(self, 'Save as CSV', '', 'CSV files (*.csv);;All Files (*)')
+    def saveCSV(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save as CSV', self.filename, 'CSV files (*.csv);;All Files (*)')
         if filename:
             with open(filename, 'w', newline='') as f:
                 writer = csv.writer(f)
-                # Write column headers
                 writer.writerow(['Time', 'Voltage'])
-                # Write data rows
                 for row in range(self.table.rowCount()):
                     time_item = self.table.item(row, 0)
                     voltage_item = self.table.item(row, 1)
                     writer.writerow([time_item.text(), voltage_item.text()])
+
 
     ############################
     # Utility Methods
@@ -569,19 +584,20 @@ class NoiserGUI(QMainWindow):
         pass
 
 
-    ## TODO IMPROVE THIS
     def setupEnvironment(self, path='./configs/toolbars.json'):
         """
             Sets up global attributes for the window
         """
         self.system = system()
         self.ids = {}
-        with open(path, 'r') as ids:
-            env = json.load(ids)
-            for key in env:
-                for item in env[key]['actions']:
-                    if '@id' in item:
-                        self.ids[item['@id']] = ''
+        with open(path, 'r') as ids_file:
+            env = json.load(ids_file)
+        for key, value in env.items():
+            for item in value.get('actions', []):
+                item_id = item.get('@id')
+                if item_id:
+                    self.ids[item_id] = ''
+
 
 
     # TODO missing args from the caller

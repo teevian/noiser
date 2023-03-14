@@ -18,6 +18,8 @@ __MAP_MESSAGES = {
         "STATUSBAR_SCALE_CHANGED" : "Y-axis scale changed to:",
         "STATUSBAR_PIN_CHANGED" : "Connected to pin ",
 
+        "TIMER_START" : "The timmer started counting!",
+
         "SIGNAL_STABILIZED" : "Signal stabilized",
         "SIGNAL_NOT_STABILIZED" : "Signal not stabilized",
 
@@ -28,6 +30,7 @@ __MAP_MESSAGES = {
         "CON_SERIAL_ERR" : "Serial not connected ",
 
         "CON_PORTS" : "Checking connected boards through USB ports...",
+        "CON_CLICK_AGAIN" : "The Arduino seems to be busy... try again in 2 seconds!",
         "CON_ERR_PORTS" : "No Arduino found at this port",
         "CON_OK_PORTS" : "Arduino found on port(s)",
         "CON_SOL_PORTS" : "Check if the Arduino is connected... or alive",

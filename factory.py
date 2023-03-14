@@ -82,27 +82,25 @@ def Scheduler(self):
         Factors a scheduler for controlling time while reading
     """
 
-    editTime = QLineEdit()
-    editTime.setFixedWidth(50)
-    validateTime = QIntValidator()
-    validateTime.setBottom(0)
-    editTime.setValidator(validateTime)
+    self.spinboxTime = QSpinBox()
+    self.spinboxTime.setFixedWidth(60)
+    self.spinboxTime.setRange(1, 100000)
 
-    comboTimeUnits = QComboBox()
-    comboTimeUnits.addItems(('s', 'ms'))
+    self.comboTimeUnits = QComboBox()
+    self.comboTimeUnits.addItems(('s', 'ms'))
 
     layoutHTime = QHBoxLayout()
     layoutHTime.addWidget(QLabel('Time:'))
-    layoutHTime.addWidget(editTime)
-    layoutHTime.addWidget(comboTimeUnits)
+    layoutHTime.addWidget(self.spinboxTime)
+    layoutHTime.addWidget(self.comboTimeUnits)
 
     # stars at box
-    comboStartAt = QComboBox()
-    comboStartAt.addItems(('right away', 'when stabilized'))
+    self.comboStartAt = QComboBox()
+    self.comboStartAt.addItems(('right away', 'when stabilized'))
 
     layoutHStartAt = QHBoxLayout()
     layoutHStartAt.addWidget(QLabel('Starting:'))
-    layoutHStartAt.addWidget(comboStartAt)
+    layoutHStartAt.addWidget(self.comboStartAt)
 
     layoutVContainer = QVBoxLayout()
     layoutVContainer.addLayout(layoutHTime)
@@ -117,13 +115,9 @@ def Scheduler(self):
 
     self.btPlayPause = QPushButton(QIcon('./data/icons/target.svg'), '')
     self.btPlayPause.setIconSize(self.ICON_SIZE)
+    self.btPlayPause.setText("START")
     self.btPlayPause.setCheckable(True)
     self.btPlayPause.toggled.connect(self.onReadStopButtonClick)
-
-    self.btRegister = QPushButton(QIcon('./data/icons/save_data.svg'), '')
-    self.btRegister.setIconSize(self.ICON_SIZE)
-    self.btRegister.setCheckable(True)
-    self.btRegister.toggled.connect(self.btPlayPauseOnToggled)
 
     self.groupSchedule.setLayout(layoutVContainer)
 
@@ -131,7 +125,6 @@ def Scheduler(self):
 def Controllers(self):
     self.layoutControllers = QHBoxLayout()
     self.layoutControllers.addWidget(self.btPlayPause)
-    self.layoutControllers.addWidget(self.btRegister)
 
 
 def boardInfoDialog():
@@ -253,7 +246,7 @@ def boardCodeDialog(path='./noiserino/noiserino.ino'):
 # Menus and Bars
 ######################################################################
 
-def MenuBar(window, path):
+def MenuBar(window, path):  # TODO
     """
         Factors a StatusBar from a json file
     """
